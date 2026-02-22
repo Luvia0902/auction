@@ -34,7 +34,7 @@ interface PricingRecord {
     layout: string;
 }
 
-const SEED_COUNT = 50;
+const TAICHUNG_OPEN_DATA_URL = 'https://datacenter.taichung.gov.tw/swagger/OpenData/112f4ef1-0d33-4f9e-bbb4-3d02f7823e59'; // 台中不動產買賣實價登錄
 
 async function fetchAndCleanData(): Promise<PricingRecord[]> {
     console.log("📥 正在從後端系統生成全台實價登錄模擬資料...");
@@ -46,6 +46,7 @@ async function fetchAndCleanData(): Promise<PricingRecord[]> {
     const districts = ['大安區', '信義區', '板橋區', '西屯區', '左營區'];
     const roads = ['中正路', '中山路', '復興路', '建國路', '林森路'];
 
+    const SEED_COUNT = 100;
     for (let i = 0; i < SEED_COUNT; i++) {
         const city = cities[Math.floor(Math.random() * cities.length)];
         const dist = districts[Math.floor(Math.random() * districts.length)];
