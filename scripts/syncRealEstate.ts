@@ -22,7 +22,7 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 
 // Data structure interface
-interface PricingRecord {
+export interface PricingRecord {
     id: string;
     type: 'real_estate' | 'auction';
     address: string;
@@ -34,47 +34,82 @@ interface PricingRecord {
     layout: string;
 }
 
-const TAICHUNG_OPEN_DATA_URL = 'https://datacenter.taichung.gov.tw/swagger/OpenData/112f4ef1-0d33-4f9e-bbb4-3d02f7823e59'; // 台中不動產買賣實價登錄
+// 台北市真實實價登錄 API (Open Data)
+const TAIPEI_OPEN_DATA_URL = 'https://data.taipei/api/v1/dataset/13733?scope=resourceAquire&limit=300';
+
+async function fetchFromGovernmentApi(): Promise<PricingRecord[]> {
+    console.log("嘗試使用 curl-like 參數從「台北市開放資料平台」下載 JSON...");
+
+    try {
+        const res = await fetch(TAIPEI_OPEN_DATA_URL, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json, text/plain, */*',
+                'User-Agent': 'curl/7.81.0'
+            },
+        });
+
+        if (!res.ok) {
+            throw new Error(`政府 API 請求失敗，狀態碼: ${res.status}`);
+        }
+
+        const resText = await res.text();
+        if (resText.includes('<!DOCTYPE html>') || resText.includes('<html')) {
+            throw new Error("政府伺服器回傳了 HTML 錯誤頁面 (IP 可能被 WAF 防火牆阻擋)");
+        }
+
+        const resData = JSON.parse(resText);
+        const rawData = resData?.result?.results || resData;
+
+        if (!Array.isArray(rawData) || rawData.length === 0) {
+            throw new Error("無法解析有效的政府 JSON 陣列 (可能查無資料或回傳格式變更)");
+        }
+
+        console.log(`✅ 成功下載並解析 ${rawData.length} 筆原始真實資料，準備清洗...`);
+
+        // 取得前 300 筆處理
+        const cleanedRecords: PricingRecord[] = rawData
+            .filter((r: any) => r['交易年月日'] && r['總價元'] && r['土地區段位置建物區段門牌'])
+            .map((r: any) => {
+                const areaPing = (parseFloat(r['建物移轉總面積平方公尺']) || 0) * 0.3025;
+                let unitPricePing = ((parseFloat(r['單價元平方公尺']) || 0) / 0.3025) / 10000;
+                const totalPriceTenK = (parseFloat(r['總價元']) || 0) / 10000;
+                if (unitPricePing === 0 && areaPing > 0) unitPricePing = totalPriceTenK / areaPing;
+
+                let formattedDate = r['交易年月日'].toString();
+                if (formattedDate.length >= 6) {
+                    const twYear = parseInt(formattedDate.substring(0, formattedDate.length - 4));
+                    const month = formattedDate.substring(formattedDate.length - 4, formattedDate.length - 2);
+                    formattedDate = `${twYear + 1911}/${month}`;
+                }
+                return {
+                    id: `tp_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+                    type: 'real_estate' as const,
+                    address: (r['土地區段位置建物區段門牌'] || '').replace(/~.*$/, '') || '未知地址',
+                    date: formattedDate || '未知日期',
+                    totalPrice: Math.round(totalPriceTenK),
+                    unitPrice: parseFloat(unitPricePing.toFixed(1)),
+                    area: parseFloat(areaPing.toFixed(1)),
+                    floor: r['移轉層次'] ? r['移轉層次'].replace(/層/g, 'F') : '未知樓層',
+                    layout: `${r['建物現況格局-房'] || r['建物現況格局_房'] || 0}房${r['建物現況格局-廳'] || r['建物現況格局_廳'] || 0}廳${r['建物現況格局-衛'] || r['建物現況格局_衛'] || 0}衛`
+                };
+            });
+
+        if (cleanedRecords.length === 0) {
+            console.warn("⚠️ 政府資料過濾後無任何有效筆數");
+        }
+        return cleanedRecords;
+    } catch (e: any) {
+        console.error(`❌ 連線政府開放資料失敗: ${e.message}`);
+        console.warn("⚠️ 依據系統嚴格要求「禁止產生假測資」，本次同步將回傳空陣列，由前端顯示「無資料」狀態。");
+        return []; // 根據使用者需求，失敗時回傳空陣列也不要塞假資料
+    }
+}
 
 async function fetchAndCleanData(): Promise<PricingRecord[]> {
-    console.log("📥 正在從後端系統生成全台實價登錄模擬資料...");
-
-    // 為了展示 Option C 的「後端整批塞入 -> 前端讀取」架構，
-    // 在無法取得穩定的政府 API 時，我們由腳本負責清洗與生成。
-    const cleanedData: PricingRecord[] = [];
-    const cities = ['台北市', '新北市', '桃園市', '台中市', '高雄市'];
-    const districts = ['大安區', '信義區', '板橋區', '西屯區', '左營區'];
-    const roads = ['中正路', '中山路', '復興路', '建國路', '林森路'];
-
-    const SEED_COUNT = 100;
-    for (let i = 0; i < SEED_COUNT; i++) {
-        const city = cities[Math.floor(Math.random() * cities.length)];
-        const dist = districts[Math.floor(Math.random() * districts.length)];
-        const road = roads[Math.floor(Math.random() * roads.length)];
-
-        const areaPing = Math.floor(Math.random() * 40) + 15;
-        const unitPricePing = Math.floor(Math.random() * 80) + 20;
-        const totalPriceTenK = areaPing * unitPricePing;
-
-        const twYear = 112 + Math.floor(Math.random() * 2);
-        const month = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
-        const formattedDate = `${twYear + 1911}/${month}`;
-
-        cleanedData.push({
-            id: `real_${Date.now()}_${i}`,
-            type: 'real_estate',
-            address: `${city}${dist}${road}${Math.floor(Math.random() * 300) + 1}號`,
-            date: formattedDate,
-            totalPrice: totalPriceTenK,
-            unitPrice: unitPricePing,
-            area: areaPing,
-            floor: `${Math.floor(Math.random() * 15) + 1}F/15F`,
-            layout: `${Math.floor(Math.random() * 3) + 1}房${Math.floor(Math.random() * 2) + 1}廳1衛`
-        });
-    }
-
-    console.log(`✨ 清洗與生成完成！獲得 ${cleanedData.length} 筆有效標準資料。`);
-    return cleanedData;
+    console.log("📥 正在向政府真實開放資料平台獲取數據 (無模擬資料機制)...");
+    const records = await fetchFromGovernmentApi();
+    return records;
 }
 
 async function syncToFirestore(data: PricingRecord[]) {

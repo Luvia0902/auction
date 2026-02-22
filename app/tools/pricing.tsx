@@ -17,20 +17,11 @@ export interface PricingRecord {
 
 import { fetchRealEstateData } from '../../src/lib/api/realEstate';
 
-const MOCK_RECORDS: PricingRecord[] = [
-    { id: '1', type: 'real_estate', address: '台北市信義區信義路五段 11 樓', date: '2023/11', totalPrice: 4500, unitPrice: 112.5, area: 40.0, floor: '11/15', layout: '3房2廳2衛' },
-    { id: '2', type: 'auction', address: '台北市信義區信義路五段 8 樓', date: '2023/09', totalPrice: 3200, unitPrice: 80.0, area: 40.0, floor: '8/15', layout: '3房2廳2衛' },
-    { id: '3', type: 'real_estate', address: '台北市士林區天母東路 5 樓', date: '2024/01', totalPrice: 2800, unitPrice: 80.0, area: 35.0, floor: '5/7', layout: '3房2廳1衛' },
-    { id: '4', type: 'auction', address: '新北市板橋區縣民大道 12 樓', date: '2023/12', totalPrice: 2150, unitPrice: 53.8, area: 40.0, floor: '12/20', layout: '4房2廳2衛' },
-    { id: '5', type: 'real_estate', address: '新北市板橋區中山路 3 樓', date: '2023/10', totalPrice: 1850, unitPrice: 57.8, area: 32.0, floor: '3/10', layout: '2房1廳1衛' },
-    { id: '6', type: 'auction', address: '台北市大安區新生南路 4 樓', date: '2024/02', totalPrice: 3800, unitPrice: 95.0, area: 40.0, floor: '4/7', layout: '3房2廳2衛' },
-];
-
 export default function PricingScreen() {
     const [search, setSearch] = useState('');
     const [filterType, setFilterType] = useState<'all' | 'real_estate' | 'auction'>('all');
 
-    const [records, setRecords] = useState<PricingRecord[]>(MOCK_RECORDS.filter(r => r.type === 'auction'));
+    const [records, setRecords] = useState<PricingRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -42,14 +33,17 @@ export default function PricingScreen() {
         try {
             setLoading(true);
             setError(null);
-            const realData = await fetchRealEstateData();
-            // 合併真實實價登錄與 Mock 法拍資料
-            setRecords([...realData, ...MOCK_RECORDS.filter(r => r.type === 'auction')]);
-        } catch (err) {
-            console.error("載入實價資料失敗:", err);
+            // 僅抓取真實伺服器資料，不再退回假資料
+            const data = await fetchRealEstateData();
+            if (data && data.length > 0) {
+                setRecords(data);
+            } else {
+                setRecords([]); // Ensure empty state if no real data
+            }
+        } catch (error) {
+            console.error('Failed to fetch real estate data:', error);
             setError("無法取得最新的內政部實價登錄資料，請稍後重試。");
-            // 若失敗，至少顯示 Mock
-            setRecords(MOCK_RECORDS);
+            setRecords([]); // 失敗即顯示空，不再使用替補假資料
         } finally {
             setLoading(false);
         }
