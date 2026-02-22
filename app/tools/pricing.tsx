@@ -1,34 +1,161 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
 
+interface PricingRecord {
+    id: string;
+    type: 'real_estate' | 'auction';
+    address: string;
+    date: string; // YYYY/MM
+    totalPrice: number; // in ten thousands
+    unitPrice: number; // in ten thousands
+    area: number; // ping
+    floor: string;
+    layout: string;
+}
+
+const MOCK_RECORDS: PricingRecord[] = [
+    { id: '1', type: 'real_estate', address: '台北市信義區信義路五段 11 樓', date: '2023/11', totalPrice: 4500, unitPrice: 112.5, area: 40.0, floor: '11/15', layout: '3房2廳2衛' },
+    { id: '2', type: 'auction', address: '台北市信義區信義路五段 8 樓', date: '2023/09', totalPrice: 3200, unitPrice: 80.0, area: 40.0, floor: '8/15', layout: '3房2廳2衛' },
+    { id: '3', type: 'real_estate', address: '台北市士林區天母東路 5 樓', date: '2024/01', totalPrice: 2800, unitPrice: 80.0, area: 35.0, floor: '5/7', layout: '3房2廳1衛' },
+    { id: '4', type: 'auction', address: '新北市板橋區縣民大道 12 樓', date: '2023/12', totalPrice: 2150, unitPrice: 53.8, area: 40.0, floor: '12/20', layout: '4房2廳2衛' },
+    { id: '5', type: 'real_estate', address: '新北市板橋區中山路 3 樓', date: '2023/10', totalPrice: 1850, unitPrice: 57.8, area: 32.0, floor: '3/10', layout: '2房1廳1衛' },
+    { id: '6', type: 'auction', address: '台北市大安區新生南路 4 樓', date: '2024/02', totalPrice: 3800, unitPrice: 95.0, area: 40.0, floor: '4/7', layout: '3房2廳2衛' },
+];
+
 export default function PricingScreen() {
+    const [search, setSearch] = useState('');
+    const [filterType, setFilterType] = useState<'all' | 'real_estate' | 'auction'>('all');
+
+    const filtered = MOCK_RECORDS.filter(r => {
+        if (filterType !== 'all' && r.type !== filterType) return false;
+        if (search && !r.address.includes(search)) return false;
+        return true;
+    });
+
+    const fmt = (n: number) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
     return (
-        <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-            <View style={styles.card}>
-                <Text style={styles.icon}>💹</Text>
-                <Text style={styles.title}>透明實價網</Text>
-                <Text style={styles.desc}>整合內政部實價登錄與歷史法拍得標紀錄，助您精準估價，出價不吃虧。</Text>
+        <View style={styles.screen}>
+            {/* Search Head */}
+            <View style={styles.searchHeader}>
+                <View style={styles.searchBar}>
+                    <Ionicons name="search" size={20} color={Colors.textMuted} />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="搜尋地址、社區、地段..."
+                        placeholderTextColor={Colors.textMuted}
+                        value={search}
+                        onChangeText={setSearch}
+                    />
+                </View>
+
+                {/* Filters */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+                    <TouchableOpacity
+                        style={[styles.filterChip, filterType === 'all' && styles.filterChipActive]}
+                        onPress={() => setFilterType('all')}
+                    >
+                        <Text style={[styles.filterText, filterType === 'all' && styles.filterTextActive]}>全部</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.filterChip, filterType === 'real_estate' && styles.filterChipActive]}
+                        onPress={() => setFilterType('real_estate')}
+                    >
+                        <Text style={[styles.filterText, filterType === 'real_estate' && styles.filterTextActive]}>一般實價 🏠</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.filterChip, filterType === 'auction' && styles.filterChipActive]}
+                        onPress={() => setFilterType('auction')}
+                    >
+                        <Text style={[styles.filterText, filterType === 'auction' && styles.filterTextActive]}>法拍得標 ⚖️</Text>
+                    </TouchableOpacity>
+                </ScrollView>
             </View>
 
-            <View style={styles.comingSoon}>
-                <Text style={styles.comingIcon}>🚧</Text>
-                <Text style={styles.comingTitle}>即將推出</Text>
-                <Text style={styles.comingDesc}>我們的工程團隊正在整合全國海量房地產交易數據。未來的實價網將支援地圖框選、社區查詢及AI自動估價功能！</Text>
-            </View>
-        </ScrollView>
+            {/* List */}
+            <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+                {filtered.map(item => (
+                    <View key={item.id} style={styles.recordCard}>
+                        <View style={styles.recordHeader}>
+                            <View style={[styles.badge, { backgroundColor: item.type === 'auction' ? Colors.riskHigh + '18' : Colors.primary + '18' }]}>
+                                <Text style={[styles.badgeText, { color: item.type === 'auction' ? Colors.riskHigh : Colors.primary }]}>
+                                    {item.type === 'auction' ? '⚖️ 法拍得標' : '🏠 實價登錄'}
+                                </Text>
+                            </View>
+                            <Text style={styles.dateText}>{item.date}</Text>
+                        </View>
+
+                        <Text style={styles.addressText} numberOfLines={1}>{item.address}</Text>
+
+                        <View style={styles.priceRow}>
+                            <View>
+                                <Text style={styles.priceLabel}>總價</Text>
+                                <Text style={styles.totalPrice}>{fmt(item.totalPrice)}<Text style={styles.unit}>萬</Text></Text>
+                            </View>
+                            <View style={styles.divider} />
+                            <View>
+                                <Text style={styles.priceLabel}>單價</Text>
+                                <Text style={styles.unitPrice}>{item.unitPrice}<Text style={styles.unit}>萬/坪</Text></Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.metaRow}>
+                            <Text style={styles.metaText}>建坪 {item.area} 坪</Text>
+                            <Text style={styles.metaDot}>·</Text>
+                            <Text style={styles.metaText}>樓層 {item.floor}</Text>
+                            <Text style={styles.metaDot}>·</Text>
+                            <Text style={styles.metaText}>{item.layout}</Text>
+                        </View>
+                    </View>
+                ))}
+
+                {filtered.length === 0 && (
+                    <View style={styles.emptyState}>
+                        <Text style={styles.emptyIcon}>🔍</Text>
+                        <Text style={styles.emptyTitle}>找不到符合的紀錄</Text>
+                        <Text style={styles.emptyDesc}>試著更換關鍵字或篩選條件</Text>
+                    </View>
+                )}
+            </ScrollView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     screen: { flex: 1, backgroundColor: Colors.bg },
-    content: { padding: Spacing.lg, gap: Spacing.md },
-    card: { backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing.xl, alignItems: 'center', marginBottom: Spacing.xl },
-    icon: { fontSize: 48, marginBottom: Spacing.md },
-    title: { fontSize: Typography.lg, fontWeight: Typography.bold, color: Colors.textPrimary, marginBottom: Spacing.sm },
-    desc: { fontSize: Typography.sm, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
-    comingSoon: { backgroundColor: Colors.round1 + '18', padding: Spacing.xl, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.round1 + '44', alignItems: 'center' },
-    comingIcon: { fontSize: 36, marginBottom: Spacing.sm },
-    comingTitle: { fontSize: Typography.base, fontWeight: Typography.bold, color: Colors.round1, marginBottom: Spacing.sm },
-    comingDesc: { fontSize: Typography.sm, color: Colors.textPrimary, textAlign: 'center', lineHeight: 22 },
+    searchHeader: { backgroundColor: Colors.surface, padding: Spacing.lg, paddingBottom: Spacing.sm, borderBottomWidth: 1, borderBottomColor: Colors.border },
+    searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bg, borderRadius: Radius.pill, paddingHorizontal: Spacing.md, height: 44, borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.md },
+    searchInput: { flex: 1, marginLeft: Spacing.sm, fontSize: Typography.base, color: Colors.textPrimary },
+    filterRow: { gap: Spacing.sm, paddingRight: Spacing.lg, paddingBottom: Spacing.md },
+    filterChip: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, borderRadius: Radius.pill, backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border },
+    filterChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+    filterText: { fontSize: Typography.sm, color: Colors.textSecondary, fontWeight: Typography.medium },
+    filterTextActive: { color: '#fff', fontWeight: Typography.bold },
+
+    list: { flex: 1 },
+    listContent: { padding: Spacing.lg, gap: Spacing.md },
+    recordCard: { backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border },
+    recordHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm },
+    badge: { paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: 4 },
+    badgeText: { fontSize: Typography.xs, fontWeight: Typography.bold },
+    dateText: { fontSize: Typography.xs, color: Colors.textMuted },
+    addressText: { fontSize: Typography.base, fontWeight: Typography.bold, color: Colors.textPrimary, marginBottom: Spacing.md },
+
+    priceRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.md, backgroundColor: Colors.bg, padding: Spacing.md, borderRadius: Radius.md },
+    priceLabel: { fontSize: Typography.xs, color: Colors.textMuted, marginBottom: 2 },
+    totalPrice: { fontSize: 24, fontWeight: Typography.bold, color: Colors.accent },
+    unitPrice: { fontSize: 20, fontWeight: Typography.bold, color: Colors.textPrimary },
+    unit: { fontSize: Typography.sm, fontWeight: 'normal' },
+    divider: { width: 1, height: '80%', backgroundColor: Colors.border, marginHorizontal: Spacing.lg },
+
+    metaRow: { flexDirection: 'row', alignItems: 'center' },
+    metaText: { fontSize: Typography.sm, color: Colors.textSecondary },
+    metaDot: { fontSize: Typography.sm, color: Colors.textMuted, marginHorizontal: Spacing.xs },
+
+    emptyState: { alignItems: 'center', paddingVertical: Spacing.xxl },
+    emptyIcon: { fontSize: 48, marginBottom: Spacing.md },
+    emptyTitle: { fontSize: Typography.lg, fontWeight: Typography.bold, color: Colors.textPrimary, marginBottom: Spacing.sm },
+    emptyDesc: { fontSize: Typography.sm, color: Colors.textMuted },
 });

@@ -10,7 +10,7 @@ const MENU_ITEMS = [
     { icon: '⚖️', label: '法院投標室', sub: '各地開標地點導覽', route: '/tools/courts' },
     { icon: '📋', label: '投標三要件', sub: '投標必備文件說明', route: '/tools/requirements' },
     { icon: '💹', label: '透明實價網', sub: '查詢歷史成交實價', route: '/tools/pricing' },
-    { icon: '🏆', label: '傳奇案例', sub: '歷史得標成功故事', route: '/tools/stories' },
+    { icon: '🏆', label: '歷史案例', sub: '歷史得標成功故事', route: '/tools/stories' },
     { icon: '🔔', label: '通知設定', sub: '開拍前提醒偏好', route: '/tools/notifications' },
     { icon: '🔑', label: 'API Key 設定', sub: 'Gemini AI 金鑰設定', route: '/tools/apikey' },
     { icon: '⭐', label: 'VIP 升級', sub: '解鎖法拍神器 24 項功能', route: '/tools/vip' },
