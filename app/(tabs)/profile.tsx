@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AdBanner from '../../src/components/AdBanner';
 import { useAuth } from '../../src/context/AuthContext';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
 
@@ -42,6 +43,9 @@ export default function ProfileScreen() {
                         )
                     }
                 </View>
+
+                {/* 全局廣告位 */}
+                <AdBanner />
 
                 {/* Admin 後台入口（僅 admin 顯示） */}
                 {isAdmin && (

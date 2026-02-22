@@ -1,10 +1,11 @@
 // app/admin/settings.tsx — 後台：系統設定
 import { router } from 'expo-router';
 import { signOut } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import React from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../src/context/AuthContext';
-import { auth } from '../../src/lib/firebase';
+import { auth, db } from '../../src/lib/firebase';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
 
 const ADMIN_EMAILS = (process.env.EXPO_PUBLIC_ADMIN_EMAILS ?? 'admin@gmail.com')
@@ -12,6 +13,36 @@ const ADMIN_EMAILS = (process.env.EXPO_PUBLIC_ADMIN_EMAILS ?? 'admin@gmail.com')
 
 export default function AdminSettingsScreen() {
     const { user } = useAuth();
+    const [showAds, setShowAds] = React.useState(false);
+    const [loadingAds, setLoadingAds] = React.useState(true);
+
+    React.useEffect(() => {
+        const fetchAdSettings = async () => {
+            try {
+                const docRef = doc(db, 'settings', 'global');
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    setShowAds(docSnap.data().showAds === true);
+                }
+            } catch (error) {
+                console.error("Failed to fetch ad settings", error);
+            } finally {
+                setLoadingAds(false);
+            }
+        };
+        fetchAdSettings();
+    }, []);
+
+    const toggleAds = async (value: boolean) => {
+        try {
+            setShowAds(value);
+            await setDoc(doc(db, 'settings', 'global'), { showAds: value }, { merge: true });
+        } catch (error) {
+            console.error("Failed to update ad settings", error);
+            Alert.alert('錯誤', '無法更新廣告設定，請稍後再試');
+            setShowAds(!value);
+        }
+    };
 
     const handleLogout = () => {
         Alert.alert('登出確認', '確定要登出後台？', [
@@ -59,6 +90,25 @@ export default function AdminSettingsScreen() {
                         </View>
                     ))}
                     <Text style={styles.hint}>如需增減 Admin，請修改 .env 的 EXPO_PUBLIC_ADMIN_EMAILS</Text>
+                </View>
+            </View>
+
+            {/* 廣告收益設定 */}
+            <View style={styles.section}>
+                <Text style={styles.sectionLabel}>全域營利設定</Text>
+                <View style={styles.infoCard}>
+                    <View style={styles.row}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.rowLabel}>Google AdMob 廣告投放</Text>
+                            <Text style={{ fontSize: Typography.xs, color: Colors.textMuted, marginTop: 2 }}>開啟後將於 App 用戶介面呈現廣告</Text>
+                        </View>
+                        <Switch
+                            value={showAds}
+                            onValueChange={toggleAds}
+                            disabled={loadingAds}
+                            trackColor={{ true: Colors.primary }}
+                        />
+                    </View>
                 </View>
             </View>
 
