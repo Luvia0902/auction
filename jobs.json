@@ -1,0 +1,121 @@
+{
+  "total_count": 1,
+  "jobs": [
+    {
+      "id": 64419694864,
+      "run_id": 22268808370,
+      "workflow_name": "Deploy Expo Web to GitHub Pages",
+      "head_branch": "master",
+      "run_url": "https://api.github.com/repos/Luvia0902/auction/actions/runs/22268808370",
+      "run_attempt": 1,
+      "node_id": "CR_kwDORVysAM8AAAAO_7aJEA",
+      "head_sha": "c2a21d8ffd1f706480c4c06a317870d1c09a7571",
+      "url": "https://api.github.com/repos/Luvia0902/auction/actions/jobs/64419694864",
+      "html_url": "https://github.com/Luvia0902/auction/actions/runs/22268808370/job/64419694864",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-02-22T02:24:12Z",
+      "started_at": "2026-02-22T02:24:15Z",
+      "completed_at": "2026-02-22T02:24:50Z",
+      "name": "build_and_deploy",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-02-22T02:24:16Z",
+          "completed_at": "2026-02-22T02:24:19Z"
+        },
+        {
+          "name": "Checkout repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-02-22T02:24:19Z",
+          "completed_at": "2026-02-22T02:24:20Z"
+        },
+        {
+          "name": "Setup Node.js",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-02-22T02:24:20Z",
+          "completed_at": "2026-02-22T02:24:25Z"
+        },
+        {
+          "name": "Install dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-02-22T02:24:25Z",
+          "completed_at": "2026-02-22T02:24:46Z"
+        },
+        {
+          "name": "Build Web App",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-02-22T02:24:46Z",
+          "completed_at": "2026-02-22T02:24:47Z"
+        },
+        {
+          "name": "Setup Pages",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-02-22T02:24:47Z",
+          "completed_at": "2026-02-22T02:24:47Z"
+        },
+        {
+          "name": "Upload artifact",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-02-22T02:24:47Z",
+          "completed_at": "2026-02-22T02:24:47Z"
+        },
+        {
+          "name": "Deploy to GitHub Pages",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-02-22T02:24:47Z",
+          "completed_at": "2026-02-22T02:24:47Z"
+        },
+        {
+          "name": "Post Setup Node.js",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 15,
+          "started_at": "2026-02-22T02:24:47Z",
+          "completed_at": "2026-02-22T02:24:47Z"
+        },
+        {
+          "name": "Post Checkout repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-02-22T02:24:47Z",
+          "completed_at": "2026-02-22T02:24:47Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-02-22T02:24:47Z",
+          "completed_at": "2026-02-22T02:24:47Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Luvia0902/auction/check-runs/64419694864",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000199,
+      "runner_name": "GitHub Actions 1000000199",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}

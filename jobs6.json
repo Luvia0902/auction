@@ -1,0 +1,121 @@
+﻿{
+    "total_count":  1,
+    "jobs":  [
+                 {
+                     "id":  64421388542,
+                     "run_id":  22269447046,
+                     "workflow_name":  "Deploy Expo Web to GitHub Pages",
+                     "head_branch":  "master",
+                     "run_url":  "https://api.github.com/repos/Luvia0902/auction/actions/runs/22269447046",
+                     "run_attempt":  1,
+                     "node_id":  "CR_kwDORVysAM8AAAAO_9Bg_g",
+                     "head_sha":  "9ee5a8824d5e158c85a93ca8a20a583061ca8da4",
+                     "url":  "https://api.github.com/repos/Luvia0902/auction/actions/jobs/64421388542",
+                     "html_url":  "https://github.com/Luvia0902/auction/actions/runs/22269447046/job/64421388542",
+                     "status":  "completed",
+                     "conclusion":  "failure",
+                     "created_at":  "2026-02-22T03:13:35Z",
+                     "started_at":  "2026-02-22T03:13:39Z",
+                     "completed_at":  "2026-02-22T03:14:13Z",
+                     "name":  "build_and_deploy",
+                     "steps":  [
+                                   {
+                                       "name":  "Set up job",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  1,
+                                       "started_at":  "2026-02-22T03:13:39Z",
+                                       "completed_at":  "2026-02-22T03:13:43Z"
+                                   },
+                                   {
+                                       "name":  "Checkout repository",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  2,
+                                       "started_at":  "2026-02-22T03:13:43Z",
+                                       "completed_at":  "2026-02-22T03:13:44Z"
+                                   },
+                                   {
+                                       "name":  "Setup Node.js",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  3,
+                                       "started_at":  "2026-02-22T03:13:44Z",
+                                       "completed_at":  "2026-02-22T03:13:48Z"
+                                   },
+                                   {
+                                       "name":  "Install dependencies",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  4,
+                                       "started_at":  "2026-02-22T03:13:48Z",
+                                       "completed_at":  "2026-02-22T03:14:10Z"
+                                   },
+                                   {
+                                       "name":  "Build Web App",
+                                       "status":  "completed",
+                                       "conclusion":  "failure",
+                                       "number":  5,
+                                       "started_at":  "2026-02-22T03:14:10Z",
+                                       "completed_at":  "2026-02-22T03:14:11Z"
+                                   },
+                                   {
+                                       "name":  "Setup Pages",
+                                       "status":  "completed",
+                                       "conclusion":  "skipped",
+                                       "number":  6,
+                                       "started_at":  "2026-02-22T03:14:11Z",
+                                       "completed_at":  "2026-02-22T03:14:11Z"
+                                   },
+                                   {
+                                       "name":  "Upload artifact",
+                                       "status":  "completed",
+                                       "conclusion":  "skipped",
+                                       "number":  7,
+                                       "started_at":  "2026-02-22T03:14:11Z",
+                                       "completed_at":  "2026-02-22T03:14:11Z"
+                                   },
+                                   {
+                                       "name":  "Deploy to GitHub Pages",
+                                       "status":  "completed",
+                                       "conclusion":  "skipped",
+                                       "number":  8,
+                                       "started_at":  "2026-02-22T03:14:11Z",
+                                       "completed_at":  "2026-02-22T03:14:11Z"
+                                   },
+                                   {
+                                       "name":  "Post Setup Node.js",
+                                       "status":  "completed",
+                                       "conclusion":  "skipped",
+                                       "number":  15,
+                                       "started_at":  "2026-02-22T03:14:11Z",
+                                       "completed_at":  "2026-02-22T03:14:11Z"
+                                   },
+                                   {
+                                       "name":  "Post Checkout repository",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  16,
+                                       "started_at":  "2026-02-22T03:14:11Z",
+                                       "completed_at":  "2026-02-22T03:14:11Z"
+                                   },
+                                   {
+                                       "name":  "Complete job",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  17,
+                                       "started_at":  "2026-02-22T03:14:11Z",
+                                       "completed_at":  "2026-02-22T03:14:11Z"
+                                   }
+                               ],
+                     "check_run_url":  "https://api.github.com/repos/Luvia0902/auction/check-runs/64421388542",
+                     "labels":  [
+                                    "ubuntu-latest"
+                                ],
+                     "runner_id":  1000000206,
+                     "runner_name":  "GitHub Actions 1000000206",
+                     "runner_group_id":  0,
+                     "runner_group_name":  "GitHub Actions"
+                 }
+             ]
+}

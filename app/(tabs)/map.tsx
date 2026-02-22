@@ -4,11 +4,13 @@ import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-    Animated, Platform, ScrollView, StyleSheet,
-    Text, TouchableOpacity, View,
+    Animated, Platform,
+    StyleSheet,
+    Text, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FilterSheet, { DEFAULT_FILTER, FilterState } from '../../src/components/FilterSheet';
+import WebMap from '../../src/components/WebMap';
 import { MOCK_PROPERTIES } from '../../src/data/mock';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
 import type { Property } from '../../src/types/property';
@@ -58,36 +60,7 @@ function PropertyBottomCard({ p, onClose, onDetail }: { p: Property; onClose: ()
     );
 }
 
-// ─── Web 佔位地圖 ─────────────────────────────────────────
-function WebMapPlaceholder({ selected, onSelect, data }: { selected: Property | null; onSelect: (p: Property | null) => void; data: Property[] }) {
-    return (
-        <View style={styles.webMap}>
-            <View style={styles.webMapBg}>
-                <Text style={styles.webMapEmoji}>🗺️</Text>
-                <Text style={styles.webMapTitle}>地圖檢視</Text>
-                <Text style={styles.webMapSub}>手機 App 版本開放完整 Google Maps 體驗</Text>
-            </View>
 
-            {/* 物件清單（代替 Pin） */}
-            <ScrollView style={styles.webPinList} contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}>
-                <Text style={styles.webPinListTitle}>📍 搜尋結果 {data.length} 筆物件</Text>
-                {data.map((p) => (
-                    <TouchableOpacity
-                        key={p.id}
-                        style={[styles.webPinCard, selected?.id === p.id && styles.webPinCardActive]}
-                        onPress={() => onSelect(selected?.id === p.id ? null : p)}
-                    >
-                        <Text style={[styles.webPinEmoji]}>{RISK_EMOJI[p.riskLevel]}</Text>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.webPinAddr} numberOfLines={1}>{p.address}</Text>
-                            <Text style={styles.webPinMeta}>{p.court} · ¥ {(p.basePrice / 10000).toFixed(0)}萬 · {p.auctionDate.slice(5)}</Text>
-                        </View>
-                    </TouchableOpacity>
-                ))}
-            </ScrollView>
-        </View>
-    );
-}
 
 // ─── Native 地圖 ──────────────────────────────────────────
 let MapView: React.ComponentType<any> | null = null;
@@ -123,7 +96,7 @@ function NativeMap({ selected, onSelect, data }: { selected: Property | null; on
         })();
     }, []);
 
-    if (!MapView || !Marker) return <WebMapPlaceholder selected={selected} onSelect={onSelect} data={data} />;
+    if (!MapView || !Marker) return <WebMap selected={selected} onSelect={onSelect} data={data} />;
 
     const initialRegion = {
         latitude: 25.0330,
@@ -198,7 +171,7 @@ export default function MapScreen() {
             </SafeAreaView>
 
             {isWeb
-                ? <WebMapPlaceholder selected={selected} onSelect={setSelected} data={filtered} />
+                ? <WebMap selected={selected} onSelect={setSelected} data={filtered} />
                 : <NativeMap selected={selected} onSelect={setSelected} data={filtered} />
             }
 
@@ -248,17 +221,4 @@ const styles = StyleSheet.create({
     detailBtnText: { color: '#fff', fontSize: Typography.sm, fontWeight: Typography.bold, textAlign: 'center', lineHeight: 20 },
     closeBtn: { position: 'absolute', top: Spacing.md, right: Spacing.lg },
     closeBtnText: { color: Colors.textMuted, fontSize: Typography.lg },
-    // Web Placeholder
-    webMap: { flex: 1 },
-    webMapBg: { height: 160, backgroundColor: Colors.primary + '18', justifyContent: 'center', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: Colors.primary + '33' },
-    webMapEmoji: { fontSize: 40, marginBottom: Spacing.sm },
-    webMapTitle: { color: Colors.primary, fontSize: Typography.lg, fontWeight: Typography.bold },
-    webMapSub: { color: Colors.textMuted, fontSize: Typography.xs, marginTop: 4 },
-    webPinList: { flex: 1 },
-    webPinListTitle: { color: Colors.textMuted, fontSize: Typography.xs, fontWeight: Typography.semibold, letterSpacing: 1, marginBottom: Spacing.xs },
-    webPinCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, padding: Spacing.md },
-    webPinCardActive: { borderColor: Colors.primary, backgroundColor: Colors.primary + '18' },
-    webPinEmoji: { fontSize: 22 },
-    webPinAddr: { color: Colors.textPrimary, fontSize: Typography.sm, fontWeight: Typography.medium },
-    webPinMeta: { color: Colors.textMuted, fontSize: Typography.xs, marginTop: 2 },
 });
