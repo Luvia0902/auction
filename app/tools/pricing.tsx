@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
 
-interface PricingRecord {
+export interface PricingRecord {
     id: string;
     type: 'real_estate' | 'auction';
     address: string;
@@ -14,6 +14,8 @@ interface PricingRecord {
     floor: string;
     layout: string;
 }
+
+import { fetchRealEstateData } from '../../src/lib/api/realEstate';
 
 const MOCK_RECORDS: PricingRecord[] = [
     { id: '1', type: 'real_estate', address: '台北市信義區信義路五段 11 樓', date: '2023/11', totalPrice: 4500, unitPrice: 112.5, area: 40.0, floor: '11/15', layout: '3房2廳2衛' },
@@ -28,7 +30,32 @@ export default function PricingScreen() {
     const [search, setSearch] = useState('');
     const [filterType, setFilterType] = useState<'all' | 'real_estate' | 'auction'>('all');
 
-    const filtered = MOCK_RECORDS.filter(r => {
+    const [records, setRecords] = useState<PricingRecord[]>(MOCK_RECORDS.filter(r => r.type === 'auction'));
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const loadData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const realData = await fetchRealEstateData();
+            // 合併真實實價登錄與 Mock 法拍資料
+            setRecords([...realData, ...MOCK_RECORDS.filter(r => r.type === 'auction')]);
+        } catch (err) {
+            console.error("載入實價資料失敗:", err);
+            setError("無法取得最新的內政部實價登錄資料，請稍後重試。");
+            // 若失敗，至少顯示 Mock
+            setRecords(MOCK_RECORDS);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const filtered = records.filter(r => {
         if (filterType !== 'all' && r.type !== filterType) return false;
         if (search && !r.address.includes(search)) return false;
         return true;
@@ -75,50 +102,64 @@ export default function PricingScreen() {
             </View>
 
             {/* List */}
-            <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-                {filtered.map(item => (
-                    <View key={item.id} style={styles.recordCard}>
-                        <View style={styles.recordHeader}>
-                            <View style={[styles.badge, { backgroundColor: item.type === 'auction' ? Colors.riskHigh + '18' : Colors.primary + '18' }]}>
-                                <Text style={[styles.badgeText, { color: item.type === 'auction' ? Colors.riskHigh : Colors.primary }]}>
-                                    {item.type === 'auction' ? '⚖️ 法拍得標' : '🏠 實價登錄'}
-                                </Text>
+            {loading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                    <Text style={styles.loadingText}>連線政府開放資料中心中...</Text>
+                </View>
+            ) : error ? (
+                <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>⚠️ {error}</Text>
+                    <TouchableOpacity style={styles.retryBtn} onPress={loadData}>
+                        <Text style={styles.retryText}>重新整理</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+                    {filtered.map(item => (
+                        <View key={item.id} style={styles.recordCard}>
+                            <View style={styles.recordHeader}>
+                                <View style={[styles.badge, { backgroundColor: item.type === 'auction' ? Colors.riskHigh + '18' : Colors.primary + '18' }]}>
+                                    <Text style={[styles.badgeText, { color: item.type === 'auction' ? Colors.riskHigh : Colors.primary }]}>
+                                        {item.type === 'auction' ? '⚖️ 法拍得標' : '🏠 實價登錄'}
+                                    </Text>
+                                </View>
+                                <Text style={styles.dateText}>{item.date}</Text>
                             </View>
-                            <Text style={styles.dateText}>{item.date}</Text>
-                        </View>
 
-                        <Text style={styles.addressText} numberOfLines={1}>{item.address}</Text>
+                            <Text style={styles.addressText} numberOfLines={1}>{item.address}</Text>
 
-                        <View style={styles.priceRow}>
-                            <View>
-                                <Text style={styles.priceLabel}>總價</Text>
-                                <Text style={styles.totalPrice}>{fmt(item.totalPrice)}<Text style={styles.unit}>萬</Text></Text>
+                            <View style={styles.priceRow}>
+                                <View>
+                                    <Text style={styles.priceLabel}>總價</Text>
+                                    <Text style={styles.totalPrice}>{fmt(item.totalPrice)}<Text style={styles.unit}>萬</Text></Text>
+                                </View>
+                                <View style={styles.divider} />
+                                <View>
+                                    <Text style={styles.priceLabel}>單價</Text>
+                                    <Text style={styles.unitPrice}>{item.unitPrice}<Text style={styles.unit}>萬/坪</Text></Text>
+                                </View>
                             </View>
-                            <View style={styles.divider} />
-                            <View>
-                                <Text style={styles.priceLabel}>單價</Text>
-                                <Text style={styles.unitPrice}>{item.unitPrice}<Text style={styles.unit}>萬/坪</Text></Text>
+
+                            <View style={styles.metaRow}>
+                                <Text style={styles.metaText}>建坪 {item.area} 坪</Text>
+                                <Text style={styles.metaDot}>·</Text>
+                                <Text style={styles.metaText}>樓層 {item.floor}</Text>
+                                <Text style={styles.metaDot}>·</Text>
+                                <Text style={styles.metaText}>{item.layout}</Text>
                             </View>
                         </View>
+                    ))}
 
-                        <View style={styles.metaRow}>
-                            <Text style={styles.metaText}>建坪 {item.area} 坪</Text>
-                            <Text style={styles.metaDot}>·</Text>
-                            <Text style={styles.metaText}>樓層 {item.floor}</Text>
-                            <Text style={styles.metaDot}>·</Text>
-                            <Text style={styles.metaText}>{item.layout}</Text>
+                    {filtered.length === 0 && (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyIcon}>🔍</Text>
+                            <Text style={styles.emptyTitle}>找不到符合的紀錄</Text>
+                            <Text style={styles.emptyDesc}>試著更換關鍵字或篩選條件</Text>
                         </View>
-                    </View>
-                ))}
-
-                {filtered.length === 0 && (
-                    <View style={styles.emptyState}>
-                        <Text style={styles.emptyIcon}>🔍</Text>
-                        <Text style={styles.emptyTitle}>找不到符合的紀錄</Text>
-                        <Text style={styles.emptyDesc}>試著更換關鍵字或篩選條件</Text>
-                    </View>
-                )}
-            </ScrollView>
+                    )}
+                </ScrollView>
+            )}
         </View>
     );
 }
@@ -158,4 +199,11 @@ const styles = StyleSheet.create({
     emptyIcon: { fontSize: 48, marginBottom: Spacing.md },
     emptyTitle: { fontSize: Typography.lg, fontWeight: Typography.bold, color: Colors.textPrimary, marginBottom: Spacing.sm },
     emptyDesc: { fontSize: Typography.sm, color: Colors.textMuted },
+
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bg },
+    loadingText: { color: Colors.textSecondary, marginTop: Spacing.md, fontSize: Typography.base },
+    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bg, padding: Spacing.xl },
+    errorText: { color: Colors.riskHigh, fontSize: Typography.base, textAlign: 'center', marginBottom: Spacing.lg },
+    retryBtn: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, backgroundColor: Colors.surface, borderRadius: Radius.pill, borderWidth: 1, borderColor: Colors.border },
+    retryText: { color: Colors.textPrimary, fontWeight: Typography.bold }
 });
