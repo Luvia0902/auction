@@ -41,6 +41,14 @@ export const DEFAULT_FILTER: FilterState = {
 
 // ─── 選項資料 ─────────────────────────────────────────────
 const CITIES = ['台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市'];
+const DISTRICTS_MAP: Record<string, string[]> = {
+    '台北市': ['大安區', '信義區', '內湖區', '士林區', '中正區', '萬華區'],
+    '新北市': ['板橋區', '三重區', '中和區', '永和區', '新莊區', '淡水區'],
+    '桃園市': ['桃園區', '中壢區', '平鎮區', '八德區', '蘆竹區'],
+    '台中市': ['西屯區', '南屯區', '北屯區', '一區', '豐原區'],
+    '高雄市': ['三民區', '左營區', '鼓山區', '鳳山區', '楠梓區'],
+    '台南市': ['永康區', '安南區', '東區', '北區', '中西區'],
+};
 const PROPERTY_TYPES = ['公寓', '電梯大樓', '透天厝', '土地'];
 
 // ─── 輔助元件：群組按鈕 (Chip) ────────────────────────────
@@ -131,20 +139,31 @@ export default function FilterSheet({ visible, initialFilter, onApply, onClose }
 
                 <ScrollView contentContainerStyle={gs.content} showsVerticalScrollIndicator={false}>
 
-                    {/* 1. 縣市與行政區 (假裝的 Dropdown UI) */}
-                    <View style={gs.section}>
-                        <Text style={gs.sectionLabel}>縣市區域</Text>
-                        <View style={gs.dropdownRow}>
-                            <TouchableOpacity style={gs.dropdownBtn}>
-                                <Text style={gs.dropdownText}>縣市</Text>
-                                <Ionicons name="chevron-down" size={20} color={Colors.textDarkMuted} />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={gs.dropdownBtn}>
-                                <Text style={gs.dropdownText}>行政區</Text>
-                                <Ionicons name="chevron-down" size={20} color={Colors.textDarkMuted} />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
+                    {/* 1. 縣市選擇 */}
+                    <ChipGroup
+                        label="選擇縣市"
+                        options={CITIES}
+                        selected={f.cities}
+                        onToggle={(v) => {
+                            const nextCities = toggle(f.cities, v);
+                            // 如果取消縣市，也要清理對應的行政區
+                            const nextDistricts = f.districts.filter(d => {
+                                const cityOfDict = Object.keys(DISTRICTS_MAP).find(c => DISTRICTS_MAP[c].includes(d));
+                                return nextCities.includes(cityOfDict || '');
+                            });
+                            setF({ ...f, cities: nextCities, districts: nextDistricts });
+                        }}
+                    />
+
+                    {/* 1.5 行政區選擇 (僅顯示已選縣市的區域) */}
+                    {f.cities.length > 0 && (
+                        <ChipGroup
+                            label="選擇行政區"
+                            options={f.cities.flatMap(c => DISTRICTS_MAP[c] || [])}
+                            selected={f.districts}
+                            onToggle={(v) => setF({ ...f, districts: toggle(f.districts, v) })}
+                        />
+                    )}
 
                     {/* 2. 拍賣狀態 (拍次) */}
                     <ChipGroup

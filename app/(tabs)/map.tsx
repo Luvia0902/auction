@@ -1,12 +1,14 @@
 // app/(tabs)/map.tsx — 🗺️ 地圖頁（Native: react-native-maps, Web: 精美佔位）
+import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Animated, Platform, ScrollView, StyleSheet,
     Text, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import FilterSheet, { DEFAULT_FILTER, FilterState } from '../../src/components/FilterSheet';
 import { MOCK_PROPERTIES } from '../../src/data/mock';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
 import type { Property } from '../../src/types/property';
@@ -57,7 +59,7 @@ function PropertyBottomCard({ p, onClose, onDetail }: { p: Property; onClose: ()
 }
 
 // ─── Web 佔位地圖 ─────────────────────────────────────────
-function WebMapPlaceholder({ selected, onSelect }: { selected: Property | null; onSelect: (p: Property | null) => void }) {
+function WebMapPlaceholder({ selected, onSelect, data }: { selected: Property | null; onSelect: (p: Property | null) => void; data: Property[] }) {
     return (
         <View style={styles.webMap}>
             <View style={styles.webMapBg}>
@@ -68,8 +70,8 @@ function WebMapPlaceholder({ selected, onSelect }: { selected: Property | null; 
 
             {/* 物件清單（代替 Pin） */}
             <ScrollView style={styles.webPinList} contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}>
-                <Text style={styles.webPinListTitle}>📍 全部 {MOCK_PROPERTIES.length} 筆物件</Text>
-                {MOCK_PROPERTIES.map((p) => (
+                <Text style={styles.webPinListTitle}>📍 搜尋結果 {data.length} 筆物件</Text>
+                {data.map((p) => (
                     <TouchableOpacity
                         key={p.id}
                         style={[styles.webPinCard, selected?.id === p.id && styles.webPinCardActive]}
@@ -99,7 +101,7 @@ if (Platform.OS !== 'web') {
     } catch { }
 }
 
-function NativeMap({ selected, onSelect }: { selected: Property | null; onSelect: (p: Property | null) => void }) {
+function NativeMap({ selected, onSelect, data }: { selected: Property | null; onSelect: (p: Property | null) => void; data: Property[] }) {
     const mapRef = useRef<any>(null);
 
     useEffect(() => {
@@ -121,7 +123,7 @@ function NativeMap({ selected, onSelect }: { selected: Property | null; onSelect
         })();
     }, []);
 
-    if (!MapView || !Marker) return <WebMapPlaceholder selected={selected} onSelect={onSelect} />;
+    if (!MapView || !Marker) return <WebMapPlaceholder selected={selected} onSelect={onSelect} data={data} />;
 
     const initialRegion = {
         latitude: 25.0330,
@@ -140,7 +142,7 @@ function NativeMap({ selected, onSelect }: { selected: Property | null; onSelect
             showsMyLocationButton={true}
             onPress={() => onSelect(null)}
         >
-            {MOCK_PROPERTIES.map((p) => (
+            {data.map((p) => (
                 <Marker
                     key={p.id}
                     coordinate={{ latitude: p.lat ?? 25, longitude: p.lng ?? 121 }}
@@ -155,23 +157,49 @@ function NativeMap({ selected, onSelect }: { selected: Property | null; onSelect
 // ─── 主頁面 ───────────────────────────────────────────────
 export default function MapScreen() {
     const [selected, setSelected] = useState<Property | null>(null);
+    const [showFilter, setShowFilter] = useState(false);
+    const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
 
     const isWeb = Platform.OS === 'web';
+
+    const filtered = useMemo(() => {
+        return MOCK_PROPERTIES.filter((p) => {
+            const matchCity = filter.cities.length === 0 || filter.cities.includes(p.city);
+            const matchRound = filter.auctionRounds.length === 0 || filter.auctionRounds.includes(p.auctionRound);
+            const matchDel = filter.deliveryTypes.length === 0 || filter.deliveryTypes.includes(p.delivery);
+            const matchType = filter.propertyTypes.length === 0 || filter.propertyTypes.includes(p.propertyType);
+            const matchCourt = filter.courts.length === 0 || filter.courts.includes(p.court);
+            const matchRisk = filter.riskLevels.length === 0 || filter.riskLevels.includes(p.riskLevel);
+            const matchPrMin = filter.priceMin == null || p.basePrice >= filter.priceMin;
+            const matchPrMax = filter.priceMax == null || p.basePrice <= filter.priceMax;
+            return matchCity && matchRound && matchDel && matchType && matchCourt && matchRisk && matchPrMin && matchPrMax;
+        });
+    }, [filter]);
 
     return (
         <View style={styles.screen}>
             <SafeAreaView edges={['top']} style={styles.topBar}>
-                <Text style={styles.topTitle}>🗺️ 地圖找物件</Text>
-                <View style={styles.legendRow}>
-                    <Text style={styles.legendItem}>🔴 高風險</Text>
-                    <Text style={styles.legendItem}>🟡 中風險</Text>
-                    <Text style={styles.legendItem}>🟢 低風險</Text>
+                <View style={styles.headerRow}>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.topTitle}>🗺️ 地圖找物件</Text>
+                        <View style={styles.legendRow}>
+                            <Text style={styles.legendItem}>🔴 高風險</Text>
+                            <Text style={styles.legendItem}>🟡 中風險</Text>
+                            <Text style={styles.legendItem}>🟢 低風險</Text>
+                        </View>
+                    </View>
+                    <TouchableOpacity
+                        style={styles.filterBtn}
+                        onPress={() => setShowFilter(true)}
+                    >
+                        <Ionicons name="options" size={22} color={Colors.primary} />
+                    </TouchableOpacity>
                 </View>
             </SafeAreaView>
 
             {isWeb
-                ? <WebMapPlaceholder selected={selected} onSelect={setSelected} />
-                : <NativeMap selected={selected} onSelect={setSelected} />
+                ? <WebMapPlaceholder selected={selected} onSelect={setSelected} data={filtered} />
+                : <NativeMap selected={selected} onSelect={setSelected} data={filtered} />
             }
 
             {selected && (
@@ -181,6 +209,13 @@ export default function MapScreen() {
                     onDetail={() => router.push(`/property/${selected.id}`)}
                 />
             )}
+
+            <FilterSheet
+                visible={showFilter}
+                initialFilter={filter}
+                onApply={(f) => setFilter(f)}
+                onClose={() => setShowFilter(false)}
+            />
         </View>
     );
 }
@@ -188,9 +223,11 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
     screen: { flex: 1, backgroundColor: Colors.bg },
     topBar: { backgroundColor: Colors.bg, borderBottomWidth: 1, borderBottomColor: Colors.border, paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm },
+    headerRow: { flexDirection: 'row', alignItems: 'center' },
     topTitle: { color: Colors.textPrimary, fontSize: Typography.lg, fontWeight: Typography.bold },
     legendRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.xs },
     legendItem: { color: Colors.textMuted, fontSize: Typography.xs },
+    filterBtn: { width: 44, height: 44, backgroundColor: Colors.surface, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border },
     // Bottom Card
     bottomCard: {
         position: 'absolute', bottom: 0, left: 0, right: 0,

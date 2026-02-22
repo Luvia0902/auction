@@ -2,7 +2,7 @@
 import type { Property } from '../types/property';
 
 const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '';
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
 
 export interface AISummaryResult {
     summary: string;       // 案件摘要（2-3 句）
@@ -12,25 +12,29 @@ export interface AISummaryResult {
 }
 
 function buildPrompt(p: Property): string {
-    return `你是台灣法拍屋 AI 分析師，請以繁體中文分析以下法拍物件，並回傳 JSON 格式（不要任何 markdown 包裝）：
+    return `你是一位擁有 20 年經驗的台灣法拍屋首席分析師。請針對以下物件，從「權利瑕疵」、「實體現況」與「市場價值」三個維度進行深度剖析。
 
-物件資訊：
-- 地址：${p.address}
-- 法院：${p.court}
-- 底價：${(p.basePrice / 10000).toFixed(0)}萬台幣
-- 估計市值：${p.estimatedPrice ? (p.estimatedPrice / 10000).toFixed(0) + '萬' : '未知'}
-- 拍次：第${p.auctionRound}拍
-- 點交：${p.delivery === 'delivery' ? '是（點交）' : '否（不點交）'}
-- 面積：${p.area} 坪
-- 屋齡：${p.buildAge ? p.buildAge + '年' : '未知'}
-- 物件類型：${p.propertyType}
+物件基本資料：
+- 地址：${p.address} (縣市：${p.city})
+- 拍賣法院與案號：${p.court}
+- 目前拍次：第 ${p.auctionRound} 拍
+- 拍賣底價：${(p.basePrice / 10000).toFixed(0)} 萬台幣
+- 點交狀態：${p.delivery === 'delivery' ? '✅ 點交 (相對安全)' : '❌ 不點交 (需注意租賃或占用)'}
+- 坪數與屋齡：${p.area} 坪 / ${p.buildAge || '未知'} 年
 
-請回傳以下 JSON 結構（簡潔，每條不超過 40 字）：
+請嚴格遵守以下輸出規範：
+1. 僅回傳一個 JSON 物件，不要任何 Markdown 標記或引導文字。
+2. summary: 核心特點摘要。
+3. risks: 條列 3 項最具關鍵的風險（如：租賃排除、共有物分割、增建違建）。
+4. suggestion: 明確的標單評估建議。
+5. roiNote: 基於市場折數的預估。
+
+JSON 格式範例：
 {
-  "summary": "案件摘要（2 句以內）",
-  "risks": ["風險1", "風險2", "風險3"],
-  "suggestion": "投資建議（1-2 句）",
-  "roiNote": "ROI 估算備注（1 句）"
+  "summary": "...",
+  "risks": ["...", "...", "..."],
+  "suggestion": "...",
+  "roiNote": "..."
 }`;
 }
 
@@ -43,8 +47,8 @@ export async function fetchAISummary(p: Property): Promise<AISummaryResult> {
         body: JSON.stringify({
             contents: [{ parts: [{ text: buildPrompt(p) }] }],
             generationConfig: {
-                temperature: 0.4,
-                maxOutputTokens: 512,
+                temperature: 0.1, // 降低溫度以維持格式穩定
+                maxOutputTokens: 600,
             },
         }),
     });
@@ -55,9 +59,17 @@ export async function fetchAISummary(p: Property): Promise<AISummaryResult> {
     }
 
     const data = await res.json();
-    const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    let text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 
-    // 擷取 JSON（移除可能的 markdown code fence）
-    const jsonStr = text.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
-    return JSON.parse(jsonStr) as AISummaryResult;
+    // 增強型 JSON 提取邏輯
+    try {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            text = jsonMatch[0];
+        }
+        return JSON.parse(text) as AISummaryResult;
+    } catch (e) {
+        console.error('JSON Parse Error, Raw Text:', text);
+        throw new Error('AI 回傳格式錯誤，請稍後再試');
+    }
 }
