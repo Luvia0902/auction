@@ -108,3 +108,16 @@ export const MOCK_RESULTS: AuctionResult[] = [
 
 // ─── 法院清單 ────────────────────────────────────────────
 export const COURTS = ['全部', '台北地院', '台中地院', '高雄地院', '板橋地院', '士林地院'];
+
+// ─── 新增：案件實例清單 (stitch4 畫面展示使用) ─────────────────
+import type { AuctionCase } from '../types/property';
+export const MOCK_CASES: AuctionCase[] = [
+    { id: 'c1', court: '台中地院', caseNumber: '112司執字第1234號', status: 'sold', statusText: '得標 (1,500萬)', date: '2026-02-20' },
+    { id: 'c2', court: '台北地院', caseNumber: '112司執字第5678號', status: 'unsold', statusText: '流標 (進入二拍)', date: '2026-02-20' },
+    { id: 'c3', court: '高雄地院', caseNumber: '112司執字第9012號', status: 'cancelled', statusText: '停拍', date: '2026-02-20' },
+    { id: 'c4', court: '台北地院', caseNumber: '112司執字第5678號', status: 'unsold', statusText: '流標 (進入二拍)', date: '2026-02-20' },
+    { id: 'c5', court: '高雄地院', caseNumber: '112司執字第9012號', status: 'unsold', statusText: '流標 (進入二拍)', date: '2026-02-20' },
+    // 也能放幾個別天的
+    { id: 'c6', court: '士林地院', caseNumber: '113司執字第1111號', status: 'sold', statusText: '得標 (2,300萬)', date: '2026-02-21' },
+    { id: 'c7', court: '板橋地院', caseNumber: '113司執字第2222號', status: 'cancelled', statusText: '撤回', date: '2026-02-21' },
+];

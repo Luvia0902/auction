@@ -8,11 +8,21 @@ export const Colors = {
     primary: '#3D7EFF',   // 電光藍（按鈕/連結）
     accent: '#F59E0B',   // 琥珀金（CTA/價格）
 
+    // ── 亮色主題 (Light Mode) ───────────────────────
+    bgLight: '#F5F5FA',    // 淺灰背底
+    cardLight: '#FFFFFF',  // 白色卡片
+    brandBlue: '#13337A',  // 頂部導覽列深藍色
+    borderLight: '#E2E8F0',// 亮色邊框
+    iconBg: '#E8EDF6',     // Icon 圓形按鈕底色
+
     // ── 文字 ────────────────────────────────────────
     textPrimary: '#F1F5F9',
     textSecondary: '#94A3B8',
     textMuted: '#64748B',
     textInverse: '#0A1628',
+    textDarkPrimary: '#1E293B', // 亮色背景用的深色字
+    textDarkSecondary: '#475569',
+    textDarkMuted: '#94A3B8',
 
     // ── 拍次色彩 ────────────────────────────────────
     round1: '#FBBF24',   // 一拍：金

@@ -1,391 +1,66 @@
-// app/property/[id].tsx — 物件詳情頁（5 Tab Sticky 架構）
+// app/property/[id].tsx — 超重度資訊物件詳情頁 (stitch3)
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator, ScrollView, StyleSheet, Text,
+    ActivityIndicator,
+    Dimensions,
+    ScrollView, StyleSheet, Text,
     TouchableOpacity, View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MOCK_PROPERTIES } from '../../src/data/mock';
 import { fetchAISummary, type AISummaryResult } from '../../src/lib/gemini';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
-import type { Property, RiskLevel } from '../../src/types/property';
 
-const RISK_COLOR: Record<RiskLevel, string> = {
-    high: Colors.riskHigh, medium: Colors.riskMedium, low: Colors.riskLow,
-};
-const RISK_EMOJI: Record<RiskLevel, string> = { high: '🔴', medium: '🟡', low: '🟢' };
+const { width } = Dimensions.get('window');
 
 // ─── 格式化工具 ───────────────────────────────────────────
-const fmt = (n: number) => `${(n / 10000).toFixed(0)}萬`;
+const fmt = (n: number) => `${(n / 10000).toLocaleString()} 萬`;
 
-// ─── Tab 定義 ─────────────────────────────────────────────
-type DetailTab = 'ai' | 'risk' | 'detail' | 'history' | 'roi';
-const TABS: { key: DetailTab; label: string }[] = [
-    { key: 'ai', label: '🤖 AI摘要' },
-    { key: 'risk', label: '🔍 風險' },
-    { key: 'detail', label: '📋 詳情' },
-    { key: 'history', label: '📊 歷史' },
-    { key: 'roi', label: '💰 ROI' },
-];
-
-// ─── Tab 內容區 ───────────────────────────────────────────
-function TabAI({ p }: { p: Property }) {
-    const [result, setResult] = useState<AISummaryResult | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    const fetchData = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const r = await fetchAISummary(p);
-            setResult(r);
-        } catch (e: unknown) {
-            setError((e as Error).message ?? 'AI 分析失敗');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => { fetchData(); }, [p.id]);
-
-    if (loading) {
-        return (
-            <View style={styles.tabContent}>
-                <View style={styles.aiCard}>
-                    <Text style={styles.aiCardLabel}>🤖 Gemini AI 分析中...</Text>
-                    <ActivityIndicator color={Colors.ai} style={{ marginTop: Spacing.md }} />
-                    <Text style={[styles.aiCardText, { textAlign: 'center', marginTop: Spacing.sm }]}>
-                        正在分析法拍資料，請稍候...
-                    </Text>
-                </View>
-            </View>
-        );
-    }
-
-    if (error) {
-        return (
-            <View style={styles.tabContent}>
-                <View style={[styles.aiCard, { borderColor: Colors.riskHigh + '66' }]}>
-                    <Text style={[styles.aiCardLabel, { color: Colors.riskHigh }]}>⚠️ 分析失敗</Text>
-                    <Text style={[styles.aiCardText, { color: Colors.riskMedium }]}>{error}</Text>
-                    <TouchableOpacity style={styles.retryBtn} onPress={fetchData}>
-                        <Text style={styles.retryBtnText}>🔄 重新分析</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        );
-    }
-
-    return (
-        <View style={styles.tabContent}>
-            {/* 案件摘要 */}
-            <View style={styles.aiCard}>
-                <Text style={styles.aiCardLabel}>🤖 Gemini AI 摘要</Text>
-                <Text style={styles.aiCardText}>{result?.summary}</Text>
-            </View>
-
-            {/* AI 風險要點 */}
-            {result?.risks && result.risks.length > 0 && (
-                <View style={styles.infoSection}>
-                    <Text style={styles.sectionTitle}>⚠️ AI 識別風險</Text>
-                    {result.risks.map((r, i) => (
-                        <View key={i} style={styles.aiRiskRow}>
-                            <Text style={styles.aiRiskBullet}>•</Text>
-                            <Text style={styles.aiRiskText}>{r}</Text>
-                        </View>
-                    ))}
-                </View>
-            )}
-
-            {/* 投資建議 */}
-            {result?.suggestion && (
-                <View style={[styles.aiCard, { borderColor: Colors.riskLow + '66', backgroundColor: Colors.riskLow + '0D' }]}>
-                    <Text style={[styles.aiCardLabel, { color: Colors.riskLow }]}>💡 投資建議</Text>
-                    <Text style={styles.aiCardText}>{result.suggestion}</Text>
-                </View>
-            )}
-
-            {/* ROI 備注 */}
-            {result?.roiNote && (
-                <Text style={styles.aiDisclaimer}>📊 {result.roiNote}</Text>
-            )}
-
-            {/* 重新分析 */}
-            <TouchableOpacity style={styles.retryBtnSoft} onPress={fetchData}>
-                <Text style={styles.retryBtnSoftText}>🔄 重新分析</Text>
-            </TouchableOpacity>
-        </View>
-    );
-}
-
-function TabRisk({ p }: { p: Property }) {
-    const [openIdx, setOpenIdx] = useState<number | null>(0);
-    return (
-        <View style={styles.tabContent}>
-            <View style={styles.riskOverall}>
-                <Text style={[styles.riskOverallText, { color: RISK_COLOR[p.riskLevel] }]}>
-                    {RISK_EMOJI[p.riskLevel]} 整體風險：{p.riskLevel === 'high' ? '高' : p.riskLevel === 'medium' ? '中' : '低'}
-                </Text>
-            </View>
-            {p.riskItems.map((r, i) => (
-                <TouchableOpacity key={r.type} style={styles.accordion} onPress={() => setOpenIdx(openIdx === i ? null : i)}>
-                    <View style={styles.accordionHeader}>
-                        <Text style={[styles.accordionTitle, { color: RISK_COLOR[r.level] }]}>
-                            {RISK_EMOJI[r.level]} {r.label}
-                        </Text>
-                        <Text style={styles.accordionArrow}>{openIdx === i ? '▲' : '▼'}</Text>
-                    </View>
-                    {openIdx === i && r.description ? (
-                        <Text style={styles.accordionBody}>{r.description}</Text>
-                    ) : null}
-                </TouchableOpacity>
-            ))}
-        </View>
-    );
-}
-
-function TabDetail({ p }: { p: Property }) {
-    const rows = [
-        ['拍賣機關', p.org],
-        ['法    院', p.court],
-        ['案    號', p.caseNumber],
-        ['查封類型', p.delivery === 'delivery' ? '✅ 點交' : '⚠️ 不點交'],
-        ['物件類型', p.propertyType],
-        ['建築面積', `${p.area} 坪`],
-        ['樓    層', p.floor ?? '-'],
-        ['屋    齡', p.buildAge ? `${p.buildAge} 年` : '-'],
-        ['開拍時間', `${p.auctionDate} ${p.auctionTime}`],
-    ];
-    return (
-        <View style={styles.tabContent}>
-            <View style={styles.detailCard}>
-                {rows.map(([label, value]) => (
-                    <View key={label} style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>{label}</Text>
-                        <Text style={styles.detailValue}>{value}</Text>
-                    </View>
-                ))}
-            </View>
-        </View>
-    );
-}
-
-function TabHistory({ p }: { p: Property }) {
-    const rounds = Array.from({ length: p.auctionRound }, (_, i) => i + 1);
-    return (
-        <View style={styles.tabContent}>
-            <Text style={styles.sectionTitle}>拍賣歷程</Text>
-            {rounds.map((r) => (
-                <View key={r} style={styles.timelineItem}>
-                    <View style={[styles.timelineDot, { backgroundColor: r === p.auctionRound ? Colors.primary : Colors.border }]} />
-                    <View style={styles.timelineBody}>
-                        <Text style={styles.timelineTitle}>
-                            {r === 1 ? '一拍' : r === 2 ? '二拍' : `${r}拍`}
-                        </Text>
-                        <Text style={styles.timelineSub}>
-                            {r < p.auctionRound ? '流標' : p.bidResult === 'sold' ? '✅ 得標' : '開標中'}
-                        </Text>
-                    </View>
-                </View>
-            ))}
-            {p.estimatedPrice && (
-                <>
-                    <Text style={[styles.sectionTitle, { marginTop: Spacing.lg }]}>價格比較</Text>
-                    <View style={styles.priceCompare}>
-                        <View style={styles.priceBox}>
-                            <Text style={styles.priceBoxLabel}>底    價</Text>
-                            <Text style={[styles.priceBoxValue, { color: Colors.accent }]}>¥ {fmt(p.basePrice)}</Text>
-                        </View>
-                        <View style={styles.priceSep} />
-                        <View style={styles.priceBox}>
-                            <Text style={styles.priceBoxLabel}>估計市值</Text>
-                            <Text style={styles.priceBoxValue}>¥ {fmt(p.estimatedPrice)}</Text>
-                        </View>
-                        <View style={styles.priceSep} />
-                        <View style={styles.priceBox}>
-                            <Text style={styles.priceBoxLabel}>折    讓</Text>
-                            <Text style={[styles.priceBoxValue, { color: Colors.riskLow }]}>
-                                {((1 - p.basePrice / p.estimatedPrice) * 100).toFixed(1)}%
-                            </Text>
-                        </View>
-                    </View>
-                </>
-            )}
-        </View>
-    );
-}
-
-function TabROI({ p }: { p: Property }) {
-    const basePrice = p.basePrice;
-    const market = p.estimatedPrice ?? basePrice * 1.3;
-
-    // 出價（預設底價）
-    const [bidPrice, setBidPrice] = React.useState(basePrice);
-    // 修繕費等級：0=不裝修, 1=輕裝修, 2=中裝修, 3=全室
-    const [renovIdx, setRenov] = React.useState(1);
-    // 持有年限
-    const [holdYears, setHoldYears] = React.useState(3);
-    // 預期年增值%
-    const [appreciation, setAppreciation] = React.useState(3);
-    // 月租金估算（萬）
-    const [monthlyRent, setMonthlyRent] = React.useState(Math.round(p.area * 0.8) / 10 * 10000);
-
-    const RENOV_OPTIONS = [
-        { label: '不裝修', costPerP: 0 },
-        { label: '輕裝修', costPerP: 8000 },
-        { label: '中裝修', costPerP: 15000 },
-        { label: '全室裝潢', costPerP: 28000 },
-    ];
-
-    // 費用計算
-    const renovCost = RENOV_OPTIONS[renovIdx].costPerP * p.area;
-    const depositFee = bidPrice * 0.016;    // 代墊費約 1.6%（地價稅+房屋稅+規費+登記）
-    const stampTax = bidPrice * 0.001;    // 印花稅
-    const totalCost = bidPrice + renovCost + depositFee + stampTax;
-
-    // 出售利潤
-    const futureVal = market * Math.pow(1 + appreciation / 100, holdYears);
-    const saleProfit = futureVal - totalCost;
-    const roi = ((saleProfit / totalCost) * 100).toFixed(1);
-    const annualRoi = (saleProfit / totalCost / holdYears * 100).toFixed(1);
-
-    // 租金收益
-    const annualRent = monthlyRent * 12;
-    const rentalYield = ((annualRent / totalCost) * 100).toFixed(2);
-
-    const fmt2 = (n: number) => `${(n / 10000).toFixed(0)}萬`;
-
-    const BidBtn = ({ delta, label }: { delta: number; label: string }) => (
-        <TouchableOpacity
-            style={styles.bidBtn}
-            onPress={() => setBidPrice((prev) => Math.max(prev + delta, basePrice * 0.5))}
-        >
-            <Text style={styles.bidBtnText}>{label}</Text>
-        </TouchableOpacity>
-    );
-
-    return (
-        <View style={styles.tabContent}>
-            {/* 出價設定 */}
-            <View style={styles.roiCard}>
-                <Text style={styles.roiCardLabel}>💰 出價設定</Text>
-                <View style={styles.bidRow}>
-                    <BidBtn delta={-500000} label="-50萬" />
-                    <View style={styles.bidCenter}>
-                        <Text style={styles.bidPrice}>¥ {fmt2(bidPrice)}</Text>
-                        <Text style={styles.bidSub}>折讓 {((1 - bidPrice / market) * 100).toFixed(1)}%</Text>
-                    </View>
-                    <BidBtn delta={500000} label="+50萬" />
-                </View>
-                <View style={styles.bidQuickRow}>
-                    {[basePrice, Math.round(basePrice * 1.05 / 100000) * 100000, Math.round(market * 0.85 / 100000) * 100000].map((v, i) => (
-                        <TouchableOpacity key={i} style={[styles.bidQuick, bidPrice === v && styles.bidQuickActive]} onPress={() => setBidPrice(v)}>
-                            <Text style={[styles.bidQuickText, bidPrice === v && styles.bidQuickTextActive]}>
-                                {i === 0 ? '底價' : i === 1 ? '+5%' : '市值85%'}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            </View>
-
-            {/* 修繕費 */}
-            <View style={styles.roiCard}>
-                <Text style={styles.roiCardLabel}>🔨 修繕費</Text>
-                <View style={styles.renovRow}>
-                    {RENOV_OPTIONS.map((opt, i) => (
-                        <TouchableOpacity key={i} style={[styles.renovChip, renovIdx === i && styles.renovChipActive]} onPress={() => setRenov(i)}>
-                            <Text style={[styles.renovChipText, renovIdx === i && styles.renovChipTextActive]}>{opt.label}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-                {renovIdx > 0 && (
-                    <Text style={styles.renovCostText}>
-                        預估：{p.area} 坪 × {RENOV_OPTIONS[renovIdx].costPerP.toLocaleString()}/坪 ≈ {fmt2(renovCost)}
-                    </Text>
-                )}
-            </View>
-
-            {/* 持有年限 + 增值 */}
-            <View style={styles.roiCard}>
-                <Text style={styles.roiCardLabel}>📅 持有計畫</Text>
-                <View style={styles.holdRow}>
-                    <Text style={styles.holdLabel}>持有年限</Text>
-                    <View style={styles.holdBtns}>
-                        {[1, 2, 3, 5, 10].map((y) => (
-                            <TouchableOpacity key={y} style={[styles.holdChip, holdYears === y && styles.holdChipActive]} onPress={() => setHoldYears(y)}>
-                                <Text style={[styles.holdChipText, holdYears === y && styles.holdChipTextActive]}>{y}年</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-                <View style={[styles.holdRow, { marginTop: Spacing.sm }]}>
-                    <Text style={styles.holdLabel}>年增值</Text>
-                    <View style={styles.holdBtns}>
-                        {[1, 2, 3, 5, 8].map((pct) => (
-                            <TouchableOpacity key={pct} style={[styles.holdChip, appreciation === pct && styles.holdChipActive]} onPress={() => setAppreciation(pct)}>
-                                <Text style={[styles.holdChipText, appreciation === pct && styles.holdChipTextActive]}>{pct}%</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-            </View>
-
-            {/* 成本明細 */}
-            <View style={styles.roiCard}>
-                <Text style={styles.roiCardLabel}>📊 成本明細</Text>
-                {[
-                    ['得標價', fmt2(bidPrice), Colors.textPrimary],
-                    ['修繕費', fmt2(renovCost), Colors.riskMedium],
-                    ['代墊費 (~1.6%)', fmt2(depositFee), Colors.textSecondary],
-                    ['印花稅 (0.1%)', fmt2(stampTax), Colors.textSecondary],
-                    ['── 總買入成本', fmt2(totalCost), Colors.accent],
-                    ['預估售價', fmt2(futureVal), Colors.riskLow],
-                    ['預估利潤', `${saleProfit >= 0 ? '+' : ''}${fmt2(saleProfit)}`, saleProfit >= 0 ? Colors.riskLow : Colors.riskHigh],
-                ].map(([label, value, color]) => (
-                    <View key={label} style={[styles.roiRow, label.startsWith('──') && styles.roiDivider]}>
-                        <Text style={[styles.roiLabel, label.startsWith('──') && { fontWeight: Typography.bold }]}>{label}</Text>
-                        <Text style={[styles.roiValue, { color }]}>{value}</Text>
-                    </View>
-                ))}
-            </View>
-
-            {/* ROI 結果卡 */}
-            <View style={[styles.roiCard, styles.roiResultCard]}>
-                <View style={styles.roiResultRow}>
-                    <View style={styles.roiResultItem}>
-                        <Text style={styles.roiResultLabel}>總 ROI</Text>
-                        <Text style={[styles.roiResultValue, { color: Number(roi) >= 0 ? Colors.riskLow : Colors.riskHigh }]}>{roi}%</Text>
-                    </View>
-                    <View style={styles.roiResultSep} />
-                    <View style={styles.roiResultItem}>
-                        <Text style={styles.roiResultLabel}>年化 ROI</Text>
-                        <Text style={[styles.roiResultValue, { color: Number(annualRoi) >= 0 ? Colors.primary : Colors.riskHigh }]}>{annualRoi}%</Text>
-                    </View>
-                    <View style={styles.roiResultSep} />
-                    <View style={styles.roiResultItem}>
-                        <Text style={styles.roiResultLabel}>租金年報</Text>
-                        <Text style={[styles.roiResultValue, { color: Colors.ai }]}>{rentalYield}%</Text>
-                    </View>
-                </View>
-            </View>
-
-            <Text style={styles.roiDisclaimer}>* 估算僅供參考，實際成本依物件狀況而定，請諮詢專業人士</Text>
-        </View>
-    );
-}
+// ─── 8宮格進階資料圖示定義 ─────────────────────────────────
+const ADVANCED_FEATURES = [
+    { icon: 'trending-up', label: '實價行情', type: 'material' },
+    { icon: 'floor-plan', label: '平面圖', type: 'material' },
+    { icon: 'gavel', label: '查封產權', type: 'material' },
+    { icon: 'file-document-outline', label: '法院筆錄', type: 'material' },
+    { icon: 'history', label: '歷史紀錄', type: 'material' },
+    { icon: 'map-outline', label: '地籍圖資', type: 'ionicons' },
+    { icon: 'calculator', label: '投報試算', type: 'ionicons' },
+    { icon: 'document-text-outline', label: '判決文', type: 'ionicons' },
+] as const;
 
 // ─── 主頁面 ───────────────────────────────────────────────
 export default function PropertyDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
-    const [activeTab, setActiveTab] = useState<DetailTab>('ai');
+    const insets = useSafeAreaInsets();
+
+    // AI 狀態
+    const [aiResult, setAiResult] = useState<AISummaryResult | null>(null);
+    const [aiLoading, setAiLoading] = useState(true);
 
     const property = MOCK_PROPERTIES.find((p) => p.id === id);
 
+    useEffect(() => {
+        if (!property) return;
+        const fetchData = async () => {
+            setAiLoading(true);
+            try {
+                const r = await fetchAISummary(property);
+                setAiResult(r);
+            } catch (e: unknown) {
+                console.log('AI Fetch Failed:', e);
+            } finally {
+                setAiLoading(false);
+            }
+        };
+        fetchData();
+    }, [property]);
+
     if (!property) {
         return (
-            <SafeAreaView style={styles.screen} edges={['top']}>
+            <SafeAreaView style={[styles.screen, { backgroundColor: Colors.bgLight }]} edges={['top']}>
                 <View style={styles.notFound}>
                     <Text style={styles.notFoundText}>找不到此物件</Text>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -396,69 +71,138 @@ export default function PropertyDetailScreen() {
         );
     }
 
+    // 隨機選一張圖當首圖
+    const imgUrl = property.imageUrls?.[0] || 'https://placehold.co/800x600/13337A/FFFFFF?text=建案圖片';
+
     return (
         <View style={styles.screen}>
-            <SafeAreaView edges={['top']} style={{ backgroundColor: Colors.bg }}>
-                {/* 導覽列 */}
-                <View style={styles.navbar}>
-                    <TouchableOpacity onPress={() => router.back()} style={styles.navBack}>
-                        <Text style={styles.navBackText}>← 返回</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.navTitle} numberOfLines={1}>{property.district}</Text>
-                    <TouchableOpacity style={styles.navWatch}>
-                        <Text style={{ fontSize: 22 }}>{property.isWatched ? '⭐' : '☆'}</Text>
-                    </TouchableOpacity>
-                </View>
-            </SafeAreaView>
+            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+                {/* 1. 全螢幕 Hero 圖片與浮水印按鈕 */}
+                <View style={[styles.heroContainer, { height: width * 0.9 }]}>
+                    <Image source={imgUrl} style={styles.heroImage} contentFit="cover" />
 
-            <ScrollView stickyHeaderIndices={[2]} showsVerticalScrollIndicator={false}>
-                {/* 區塊 1：Hero 圖（佔位） */}
-                <View style={styles.hero}>
-                    <Text style={styles.heroEmoji}>🏠</Text>
-                    <Text style={styles.heroAddress}>{property.address}</Text>
+                    {/* 頂部導航鈕 (懸浮在圖片上) */}
+                    <View style={[styles.heroNav, { top: insets.top || Spacing.md }]}>
+                        <TouchableOpacity onPress={() => router.back()} style={styles.heroNavIcon}>
+                            <Ionicons name="chevron-back" size={28} color="#FFF" />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.heroNavIcon}>
+                            <Ionicons name="heart-outline" size={28} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* 圖片左下角的 Tag */}
+                    <View style={styles.heroTagRow}>
+                        <View style={styles.heroTagPill}>
+                            <Text style={styles.heroTagText}>
+                                {property.auctionRound === 1 ? '第一拍' : property.auctionRound === 2 ? '第二拍' : `第${property.auctionRound}拍`} | {property.delivery === 'delivery' ? '點交' : '不點交'}
+                            </Text>
+                        </View>
+                    </View>
                 </View>
 
-                {/* 區塊 2：AI 速覽列 */}
-                <View style={styles.aiBar}>
-                    <View style={[styles.riskPill, { backgroundColor: RISK_COLOR[property.riskLevel] + '22', borderColor: RISK_COLOR[property.riskLevel] + '66' }]}>
-                        <Text style={[styles.riskPillText, { color: RISK_COLOR[property.riskLevel] }]}>
-                            {RISK_EMOJI[property.riskLevel]} {property.riskLevel === 'high' ? '高風險' : property.riskLevel === 'medium' ? '中風險' : '低風險'}
+                {/* 2. 懸浮標題卡片 */}
+                <View style={styles.contentWrapper}>
+                    <View style={styles.titleCard}>
+                        <Text style={styles.titleAddress} numberOfLines={2}>{property.address}</Text>
+                        <Text style={styles.titlePriceLabel}>
+                            底價：<Text style={styles.titlePriceValue}>{fmt(property.basePrice)}</Text>
+                        </Text>
+                        <Text style={styles.titleSub}>
+                            單價：{Math.round(property.basePrice / property.area / 10000)}萬/坪 | 預估市值 {Math.round((property.basePrice / (property.estimatedPrice || property.basePrice)) * 10)} 折
                         </Text>
                     </View>
-                    <Text style={styles.aiBarPrice}>¥ {fmt(property.basePrice)}</Text>
-                    <Text style={styles.aiBarMeta}>{property.area} 坪</Text>
-                </View>
 
-                {/* Sticky Tab Bar */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.stickyTabBar} contentContainerStyle={{ paddingHorizontal: Spacing.sm }}>
-                    {TABS.map((t) => (
-                        <TouchableOpacity
-                            key={t.key}
-                            style={[styles.stickyTab, activeTab === t.key && styles.stickyTabActive]}
-                            onPress={() => setActiveTab(t.key)}
-                        >
-                            <Text style={[styles.stickyTabText, activeTab === t.key && styles.stickyTabTextActive]}>{t.label}</Text>
+                    {/* 3. AI 筆錄分析風險 (黃色警示框) */}
+                    <View style={styles.aiRiskBox}>
+                        <View style={styles.aiRiskHeaderRow}>
+                            <Text style={styles.aiRiskIcon}>⚠️</Text>
+                            <Text style={styles.aiRiskTitle}>AI 筆錄分析風險</Text>
+                        </View>
+                        {aiLoading ? (
+                            <ActivityIndicator size="small" color={Colors.accent} style={{ marginTop: Spacing.sm }} />
+                        ) : (
+                            <Text style={styles.aiRiskText}>
+                                {aiResult?.risks?.length
+                                    ? aiResult.risks[0]
+                                    : "此物件目前無明顯特殊風險描述，但可能需注意法院公告之其他約定事項。"}
+                            </Text>
+                        )}
+                    </View>
+
+                    {/* 4. 基本資料 */}
+                    <View style={styles.sectionBlock}>
+                        <Text style={styles.sectionTitle}>基本資料</Text>
+
+                        <View style={styles.infoGrid}>
+                            <View style={styles.infoCol}>
+                                <View style={styles.infoItemRow}>
+                                    <Ionicons name="calendar-outline" size={16} color={Colors.textDarkMuted} />
+                                    <Text style={styles.infoItemText}>拍賣日：{property.auctionDate.replace(/-/g, '/')}</Text>
+                                </View>
+                                <View style={styles.infoItemRow}>
+                                    <Ionicons name="home-outline" size={16} color={Colors.textDarkMuted} />
+                                    <Text style={styles.infoItemText}>屋齡：{property.buildAge || '--'} 年</Text>
+                                </View>
+                                <View style={styles.infoItemRow}>
+                                    <MaterialCommunityIcons name="office-building-outline" size={16} color={Colors.textDarkMuted} />
+                                    <Text style={styles.infoItemText}>樓層：{property.floor || '--/-- 層'}</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.infoCol}>
+                                <View style={styles.infoItemRow}>
+                                    <Ionicons name="checkmark-circle-outline" size={16} color={Colors.textDarkMuted} />
+                                    <Text style={styles.infoItemText}>點交否：{property.delivery === 'delivery' ? '有點交' : '不點交'}</Text>
+                                </View>
+                                <View style={styles.infoItemRow}>
+                                    <Ionicons name="scan-outline" size={16} color={Colors.textDarkMuted} />
+                                    <Text style={styles.infoItemText}>總坪數：{property.area} 坪</Text>
+                                </View>
+                                <View style={styles.infoItemRow}>
+                                    <Ionicons name="cash-outline" size={16} color={Colors.textDarkMuted} />
+                                    <Text style={styles.infoItemText}>保證金：{Math.round(property.basePrice * 0.2 / 10000)}萬</Text>
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* 5. 法拍神器與進階資料 (VIP) */}
+                    <View style={styles.sectionBlock}>
+                        <Text style={styles.sectionTitle}>法拍神器與進階資料 (VIP)</Text>
+
+                        <View style={styles.advGrid}>
+                            {ADVANCED_FEATURES.map((feat, idx) => (
+                                <TouchableOpacity key={idx} style={styles.advItemBox}>
+                                    {feat.type === 'ionicons' ? (
+                                        <Ionicons name={feat.icon as any} size={28} color={Colors.brandBlue} style={styles.advIcon} />
+                                    ) : (
+                                        <MaterialCommunityIcons name={feat.icon as any} size={28} color={Colors.brandBlue} style={styles.advIcon} />
+                                    )}
+                                    <Text style={styles.advItemLabel}>{feat.label}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {/* 展開更多 Btn */}
+                        <TouchableOpacity style={styles.expandMoreBtn}>
+                            <Text style={styles.expandMoreText}>展開更多</Text>
+                            <Ionicons name="chevron-down" size={18} color={Colors.brandBlue} />
                         </TouchableOpacity>
-                    ))}
-                </ScrollView>
+                    </View>
 
-                {/* Tab 內容 */}
-                {activeTab === 'ai' && <TabAI p={property} />}
-                {activeTab === 'risk' && <TabRisk p={property} />}
-                {activeTab === 'detail' && <TabDetail p={property} />}
-                {activeTab === 'history' && <TabHistory p={property} />}
-                {activeTab === 'roi' && <TabROI p={property} />}
-
-                <View style={{ height: 120 }} />
+                    {/* 留底空白 */}
+                    <View style={{ height: Spacing.xxxl * 2 }} />
+                </View>
             </ScrollView>
 
-            {/* 底部固定 CTA */}
-            <SafeAreaView edges={['bottom']} style={styles.ctaBar}>
-                <TouchableOpacity style={styles.ctaWatch}>
-                    <Text style={styles.ctaWatchText}>{property.isWatched ? '⭐ 已追蹤' : '☆ 加入追蹤'}</Text>
+            {/* 6. 底部雙 CTA 按鈕 */}
+            <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
+                <TouchableOpacity style={styles.btnOutline}>
+                    <Text style={styles.btnOutlineText}>加入追蹤</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.ctaMain}>
-                    <Text style={styles.ctaMainText}>📅 加入行事曆</Text>
+                <TouchableOpacity style={styles.btnSolid}>
+                    <Text style={styles.btnSolidText}>聯絡代標/諮詢</Text>
                 </TouchableOpacity>
             </SafeAreaView>
         </View>
@@ -466,140 +210,116 @@ export default function PropertyDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-    screen: { flex: 1, backgroundColor: Colors.bg },
+    screen: { flex: 1, backgroundColor: Colors.bgLight },
+
+    // Exception
     notFound: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    notFoundText: { color: Colors.textSecondary, fontSize: Typography.lg, marginBottom: Spacing.lg },
-    backBtn: { backgroundColor: Colors.primary, borderRadius: Radius.pill, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
+    notFoundText: { color: Colors.textDarkSecondary, fontSize: Typography.lg, marginBottom: Spacing.lg },
+    backBtn: { backgroundColor: Colors.brandBlue, borderRadius: Radius.pill, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
     backBtnText: { color: '#fff', fontWeight: Typography.semibold },
-    // Navbar
-    navbar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.md },
-    navBack: { padding: Spacing.xs },
-    navBackText: { color: Colors.primary, fontSize: Typography.base },
-    navTitle: { flex: 1, color: Colors.textPrimary, fontSize: Typography.base, fontWeight: Typography.semibold, textAlign: 'center' },
-    navWatch: { padding: Spacing.xs },
-    // Hero
-    hero: {
-        backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border,
-        alignItems: 'center', paddingVertical: Spacing.xxl, paddingHorizontal: Spacing.lg,
+
+    // 1. Hero
+    heroContainer: { width: '100%', position: 'relative' },
+    heroImage: { width: '100%', height: '100%' },
+    heroNav: {
+        position: 'absolute', left: 0, right: 0,
+        flexDirection: 'row', justifyContent: 'space-between',
+        paddingHorizontal: Spacing.lg
     },
-    heroEmoji: { fontSize: 64, marginBottom: Spacing.md },
-    heroAddress: { color: Colors.textSecondary, fontSize: Typography.base, textAlign: 'center' },
-    // AI Bar
-    aiBar: {
-        flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-        paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
-        backgroundColor: Colors.bg, borderBottomWidth: 1, borderBottomColor: Colors.border,
+    heroNavIcon: {
+        width: 40, height: 40, alignItems: 'center', justifyContent: 'center',
+        textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4
     },
-    riskPill: { borderRadius: Radius.pill, borderWidth: 1, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
-    riskPillText: { fontSize: Typography.xs, fontWeight: Typography.semibold },
-    aiBarPrice: { color: Colors.accent, fontSize: Typography.xl, fontWeight: Typography.bold, marginLeft: Spacing.sm },
-    aiBarMeta: { color: Colors.textMuted, fontSize: Typography.sm },
-    // Sticky Tab Bar
-    stickyTabBar: { backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
-    stickyTab: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-    stickyTabActive: { borderBottomColor: Colors.primary },
-    stickyTabText: { color: Colors.textMuted, fontSize: Typography.sm, fontWeight: Typography.medium },
-    stickyTabTextActive: { color: Colors.primary, fontWeight: Typography.bold },
-    // Tab Content
-    tabContent: { padding: Spacing.lg, gap: Spacing.md },
-    aiCard: {
-        backgroundColor: Colors.ai + '18', borderRadius: Radius.lg, borderWidth: 1,
-        borderColor: Colors.ai + '44', padding: Spacing.lg,
+    heroTagRow: {
+        position: 'absolute', bottom: Spacing.xl + 20, left: Spacing.lg,
     },
-    aiCardLabel: { color: Colors.ai, fontSize: Typography.sm, fontWeight: Typography.semibold, marginBottom: Spacing.sm },
-    aiCardText: { color: Colors.textSecondary, fontSize: Typography.base, lineHeight: 24 },
-    infoSection: { gap: Spacing.sm },
-    sectionTitle: { color: Colors.textMuted, fontSize: Typography.xs, fontWeight: Typography.semibold, letterSpacing: 1, marginBottom: Spacing.xs },
-    infoRow: { paddingVertical: Spacing.xs },
-    riskTag: { fontSize: Typography.sm, fontWeight: Typography.semibold },
-    // Risk Tab
-    riskOverall: {
-        backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1,
-        borderColor: Colors.border, padding: Spacing.md, alignItems: 'center',
+    heroTagPill: {
+        backgroundColor: 'rgba(29, 160, 83, 0.9)', // 綠色標籤
+        paddingHorizontal: Spacing.md, paddingVertical: 6,
+        borderRadius: 4,
     },
-    riskOverallText: { fontSize: Typography.lg, fontWeight: Typography.bold },
-    accordion: {
-        backgroundColor: Colors.surface, borderRadius: Radius.md,
-        borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
+    heroTagText: { color: '#FFF', fontSize: Typography.sm, fontWeight: Typography.semibold },
+
+    // 2. 內容包裝框 (-marginTop 製造重疊效果)
+    contentWrapper: {
+        backgroundColor: Colors.bgLight,
+        borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl,
+        marginTop: -30,
+        paddingHorizontal: Spacing.lg,
+        minHeight: 500,
     },
-    accordionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.md },
-    accordionTitle: { fontSize: Typography.base, fontWeight: Typography.semibold },
-    accordionArrow: { color: Colors.textMuted, fontSize: Typography.sm },
-    accordionBody: { color: Colors.textSecondary, fontSize: Typography.sm, lineHeight: 22, paddingHorizontal: Spacing.md, paddingBottom: Spacing.md },
-    // Detail Tab
-    detailCard: { backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
-    detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border },
-    detailLabel: { color: Colors.textMuted, fontSize: Typography.sm, letterSpacing: 1 },
-    detailValue: { color: Colors.textPrimary, fontSize: Typography.sm, fontWeight: Typography.medium },
-    // History Tab
-    timelineItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.sm },
-    timelineDot: { width: 12, height: 12, borderRadius: 6 },
-    timelineBody: {},
-    timelineTitle: { color: Colors.textPrimary, fontSize: Typography.base, fontWeight: Typography.medium },
-    timelineSub: { color: Colors.textMuted, fontSize: Typography.sm },
-    priceCompare: { flexDirection: 'row', backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
-    priceBox: { flex: 1, padding: Spacing.md, alignItems: 'center' },
-    priceSep: { width: 1, backgroundColor: Colors.border },
-    priceBoxLabel: { color: Colors.textMuted, fontSize: Typography.xs, marginBottom: Spacing.xs },
-    priceBoxValue: { color: Colors.textPrimary, fontSize: Typography.md, fontWeight: Typography.bold },
-    // ROI Tab
-    roiCard: { backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg, gap: Spacing.md },
-    roiCardLabel: { color: Colors.textSecondary, fontSize: Typography.sm, fontWeight: Typography.semibold, marginBottom: Spacing.xs },
-    roiRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    roiDivider: { borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: Spacing.md, marginTop: Spacing.xs },
-    roiLabel: { color: Colors.textSecondary, fontSize: Typography.base },
-    roiValue: { color: Colors.textPrimary, fontSize: Typography.lg, fontWeight: Typography.semibold },
-    roiDisclaimer: { color: Colors.textMuted, fontSize: Typography.xs, textAlign: 'center', marginTop: Spacing.sm },
-    // ROI Tab Added Styles
-    bidRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.sm },
-    bidBtn: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, borderRadius: Radius.pill },
-    bidBtnText: { color: Colors.textSecondary, fontSize: Typography.sm, fontWeight: Typography.semibold },
-    bidCenter: { alignItems: 'center' },
-    bidPrice: { color: Colors.accent, fontSize: Typography.xl, fontWeight: Typography.bold },
-    bidSub: { color: Colors.riskLow, fontSize: Typography.xs, marginTop: 2 },
-    bidQuickRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
-    bidQuick: { flex: 1, paddingVertical: Spacing.sm, alignItems: 'center', borderRadius: Radius.sm, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
-    bidQuickActive: { backgroundColor: Colors.primary + '11', borderColor: Colors.primary },
-    bidQuickText: { color: Colors.textSecondary, fontSize: Typography.sm },
-    bidQuickTextActive: { color: Colors.primary, fontWeight: Typography.bold },
-    renovRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-    renovChip: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: Radius.pill, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
-    renovChipActive: { backgroundColor: Colors.primary + '11', borderColor: Colors.primary },
-    renovChipText: { color: Colors.textSecondary, fontSize: Typography.sm },
-    renovChipTextActive: { color: Colors.primary, fontWeight: Typography.bold },
-    renovCostText: { color: Colors.textSecondary, fontSize: Typography.sm, marginTop: Spacing.xs },
-    holdRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    holdLabel: { color: Colors.textSecondary, fontSize: Typography.sm },
-    holdBtns: { flexDirection: 'row', gap: Spacing.sm },
-    holdChip: { paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderRadius: Radius.sm, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
-    holdChipActive: { backgroundColor: Colors.primary + '11', borderColor: Colors.primary },
-    holdChipText: { color: Colors.textSecondary, fontSize: Typography.sm },
-    holdChipTextActive: { color: Colors.primary, fontWeight: Typography.bold },
-    roiResultCard: { backgroundColor: Colors.surface, borderColor: Colors.primary + '44', borderWidth: 2 },
-    roiResultRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    roiResultItem: { flex: 1, alignItems: 'center' },
-    roiResultLabel: { color: Colors.textSecondary, fontSize: Typography.sm, marginBottom: 4 },
-    roiResultValue: { fontSize: Typography.xl, fontWeight: Typography.bold },
-    roiResultSep: { width: 1, height: 30, backgroundColor: Colors.border },
-    // CTA Bar
-    ctaBar: { flexDirection: 'row', gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, backgroundColor: Colors.surface, borderTopWidth: 1, borderTopColor: Colors.border },
-    ctaWatch: { flex: 1, backgroundColor: Colors.surface, borderRadius: Radius.pill, paddingVertical: Spacing.md, alignItems: 'center', borderWidth: 1, borderColor: Colors.primary },
-    ctaWatchText: { color: Colors.primary, fontSize: Typography.base, fontWeight: Typography.semibold },
-    ctaMain: { flex: 2, backgroundColor: Colors.primary, borderRadius: Radius.pill, paddingVertical: Spacing.md, alignItems: 'center' },
-    ctaMainText: { color: '#fff', fontSize: Typography.base, fontWeight: Typography.bold },
-    // AI Tab 新增
-    retryBtn: {
-        marginTop: Spacing.md, backgroundColor: Colors.riskHigh + '22', borderRadius: Radius.pill,
-        borderWidth: 1, borderColor: Colors.riskHigh + '44', paddingVertical: Spacing.sm, alignItems: 'center',
+    titleCard: {
+        backgroundColor: Colors.cardLight,
+        borderRadius: Radius.lg,
+        padding: Spacing.lg,
+        marginTop: -30, // 往上凸出
+        shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8,
+        marginBottom: Spacing.xl, // 與下面風險框保持距離
     },
-    retryBtnText: { color: Colors.riskHigh, fontSize: Typography.sm, fontWeight: Typography.semibold },
-    retryBtnSoft: {
-        borderRadius: Radius.pill, borderWidth: 1, borderColor: Colors.ai + '44',
-        paddingVertical: Spacing.sm, alignItems: 'center',
+    titleAddress: { color: Colors.textDarkPrimary, fontSize: Typography.xl, fontWeight: '900', marginBottom: Spacing.sm, lineHeight: 28 },
+    titlePriceLabel: { color: Colors.textDarkPrimary, fontSize: Typography.lg, fontWeight: '700', marginBottom: 4 },
+    titlePriceValue: { color: '#D32F2F', fontSize: 26 }, // 設計圖裡的紅字價格
+    titleSub: { color: Colors.textDarkSecondary, fontSize: Typography.sm, marginTop: Spacing.xs },
+
+    // 3. AI 風險框
+    aiRiskBox: {
+        backgroundColor: '#FFF9E6', // 淡黃底
+        borderColor: '#FDE08B', borderWidth: 1, // 黃邊框
+        borderRadius: Radius.md,
+        padding: Spacing.md,
+        marginBottom: Spacing.xl,
     },
-    retryBtnSoftText: { color: Colors.ai, fontSize: Typography.sm },
-    aiRiskRow: { flexDirection: 'row', gap: Spacing.sm, paddingVertical: Spacing.xs, alignItems: 'flex-start' },
-    aiRiskBullet: { color: Colors.riskMedium, fontSize: Typography.base, lineHeight: 22 },
-    aiRiskText: { flex: 1, color: Colors.textSecondary, fontSize: Typography.sm, lineHeight: 22 },
-    aiDisclaimer: { color: Colors.textMuted, fontSize: Typography.xs, textAlign: 'center', fontStyle: 'italic' },
+    aiRiskHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.xs },
+    aiRiskIcon: { fontSize: 20, marginRight: 6 },
+    aiRiskTitle: { color: '#4A4A4A', fontSize: Typography.base, fontWeight: 'bold' },
+    aiRiskText: { color: '#555', fontSize: Typography.sm, lineHeight: 22 },
+
+    // 4. Section Blocks
+    sectionBlock: { marginBottom: Spacing.xl },
+    sectionTitle: { color: Colors.textDarkPrimary, fontSize: Typography.lg, fontWeight: '800', marginBottom: Spacing.md },
+
+    // 雙欄基本資料
+    infoGrid: { flexDirection: 'row', justifyContent: 'space-between' },
+    infoCol: { flex: 1, gap: Spacing.sm },
+    infoItemRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    infoItemText: { color: Colors.textDarkPrimary, fontSize: Typography.base },
+
+    // 5. 八宮格進階資料
+    advGrid: {
+        flexDirection: 'row', flexWrap: 'wrap',
+        justifyContent: 'space-between', gap: 10
+    },
+    advItemBox: {
+        width: '23%', // 1排4個
+        alignItems: 'center',
+        marginBottom: Spacing.md,
+    },
+    advIcon: { marginBottom: Spacing.xs },
+    advItemLabel: { color: Colors.textDarkPrimary, fontSize: 13, textAlign: 'center' },
+
+    expandMoreBtn: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        paddingVertical: Spacing.sm, marginTop: Spacing.xs, gap: 4
+    },
+    expandMoreText: { color: Colors.brandBlue, fontSize: Typography.sm, fontWeight: '600' },
+
+    // 6. 底部區塊 CTA
+    bottomBar: {
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        backgroundColor: Colors.cardLight, flexDirection: 'row',
+        paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.md,
+        borderTopWidth: 1, borderTopColor: Colors.borderLight, gap: Spacing.md,
+        shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 12,
+    },
+    btnOutline: {
+        width: 120, alignItems: 'center', justifyContent: 'center',
+        borderWidth: 1, borderColor: Colors.brandBlue, borderRadius: Radius.sm,
+    },
+    btnOutlineText: { color: Colors.brandBlue, fontSize: Typography.base, fontWeight: 'bold' },
+    btnSolid: {
+        flex: 1, alignItems: 'center', justifyContent: 'center',
+        backgroundColor: Colors.brandBlue, borderRadius: Radius.sm,
+        paddingVertical: Spacing.md,
+    },
+    btnSolidText: { color: '#FFF', fontSize: Typography.base, fontWeight: 'bold' },
 });

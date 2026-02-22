@@ -1,81 +1,91 @@
-// app/(tabs)/index.tsx — 🔍 探索頁（含進階篩選器）
+// app/(tabs)/index.tsx — 🔍 探索頁（整合設計圖新版型）
+import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ScrollView, StyleSheet, Text, TextInput,
   TouchableOpacity, View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FilterSheet, { DEFAULT_FILTER, FilterState } from '../../src/components/FilterSheet';
 import { MOCK_PROPERTIES } from '../../src/data/mock';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
 import type { Property } from '../../src/types/property';
 
-// ─── 物件卡片 ─────────────────────────────────────────────
-const ROUND_COLOR: Record<number, string> = {
-  1: Colors.round1, 2: Colors.round2, 3: Colors.round3, 4: Colors.round3,
-};
-const RISK_COLOR: Record<string, string> = {
-  high: Colors.riskHigh, medium: Colors.riskMedium, low: Colors.riskLow,
-};
-const RISK_EMOJI: Record<string, string> = { high: '🔴', medium: '🟡', low: '🟢' };
+// ─── 輔助函式 ─────────────────────────────────────────────
+function formatPrice(price: number) {
+  return `NT$ ${(price / 10000).toLocaleString()} 萬`;
+}
 
+// ─── 新版卡片 ─────────────────────────────────────────────
 function PropertyCard({ item, onPress }: { item: Property; onPress: () => void }) {
-  const fmt = (n: number) => `${(n / 10000).toFixed(0)}萬`;
+  // 從 imageUrls 取出第一張或使用預設
+  const imgUrl = item.imageUrls?.[0] || 'https://placehold.co/400x400/1E293B/3D7EFF?text=預設圖片';
+
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.82}>
-      {/* 頂列：拍次 + 點交 + 機關 */}
-      <View style={styles.cardBadgeRow}>
-        <View style={[styles.chip, { borderColor: ROUND_COLOR[item.auctionRound] }]}>
-          <Text style={[styles.chipText, { color: ROUND_COLOR[item.auctionRound] }]}>
-            {item.auctionRound === 1 ? '一拍' : item.auctionRound === 2 ? '二拍' : `${item.auctionRound}拍`}
-          </Text>
-        </View>
-        <View style={[styles.chip, { borderColor: item.delivery === 'delivery' ? Colors.delivery : Colors.noDelivery }]}>
-          <Text style={[styles.chipText, { color: item.delivery === 'delivery' ? Colors.delivery : Colors.noDelivery }]}>
-            {item.delivery === 'delivery' ? '✅點交' : '⚠️不點交'}
-          </Text>
-        </View>
-        <View style={[styles.chip, { borderColor: Colors.border }]}>
-          <Text style={[styles.chipText, { color: Colors.textMuted }]}>{item.org}</Text>
-        </View>
-        <View style={{ flex: 1 }} />
-        <Text style={[styles.riskBadge, { color: RISK_COLOR[item.riskLevel] }]}>
-          {RISK_EMOJI[item.riskLevel]} {item.riskLevel === 'high' ? '高風險' : item.riskLevel === 'medium' ? '中風險' : '低風險'}
-        </Text>
-      </View>
-
-      {/* 地址 */}
-      <Text style={styles.cardAddress} numberOfLines={1}>{item.address}</Text>
-
-      {/* 核心數字 */}
-      <View style={styles.cardMetaRow}>
-        <Text style={styles.cardPrice}>¥ {fmt(item.basePrice)}</Text>
-        <Text style={styles.cardMeta}>  ·  {item.area} 坪</Text>
-        {item.buildAge ? <Text style={styles.cardMeta}>  ·  屋齡 {item.buildAge} 年</Text> : null}
-      </View>
-
-      {/* 底列：法院 + 開拍日 */}
-      <View style={styles.cardFooter}>
-        <Text style={styles.cardCourt}>{item.court}</Text>
-        <Text style={styles.cardDate}>
-          📅 {item.auctionDate.slice(5)} {item.auctionTime}
-        </Text>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
+      <Image source={imgUrl} style={styles.cardImage} contentFit="cover" />
+      <View style={styles.cardContent}>
+        <Text style={styles.cardTag}>今日法拍快報</Text>
+        <Text style={styles.cardTitle} numberOfLines={2}>{item.address}</Text>
+        <Text style={styles.cardPrice}>{formatPrice(item.basePrice)}</Text>
+        <Text style={styles.cardDate}>法拍日期：{item.auctionDate.replace(/-/g, '/')}</Text>
       </View>
     </TouchableOpacity>
   );
 }
 
-// ─── AI 精選 Banner ───────────────────────────────────────
-function AIBanner() {
+// ─── 新版四大功能按鈕區塊 ────────────────────────────────
+function ActionsRow() {
+  const actions = [
+    { id: 'schedule', label: '投標總表', icon: 'gavel', bg: Colors.iconBg },
+    { id: 'results', label: '開標結果', icon: 'list-ul', bg: Colors.iconBg },
+    { id: 'history', label: '實價登錄', icon: 'file-alt', bg: Colors.iconBg },
+    { id: 'ai', label: 'AI 幫我找', icon: 'robot', bg: Colors.iconBg },
+  ];
+
   return (
-    <View style={styles.aiBanner}>
-      <Text style={styles.aiLabel}>🤖 AI 今日精選</Text>
-      <Text style={styles.aiText}>Gemini 分析 3 筆高 CP 值物件，折價超過 20%，風險低</Text>
-      <TouchableOpacity style={styles.aiBtn}>
-        <Text style={styles.aiBtnText}>查看推薦 →</Text>
-      </TouchableOpacity>
+    <View style={styles.actionsContainer}>
+      <Text style={styles.sectionTitle}>投標總表</Text>
+      <View style={styles.actionsRow}>
+        {actions.map(action => (
+          <TouchableOpacity key={action.id} style={styles.actionBtn}>
+            <View style={[styles.actionIconWrapper, { backgroundColor: action.bg }]}>
+              <FontAwesome5 name={action.icon} size={22} color={Colors.brandBlue} />
+            </View>
+            <Text style={styles.actionLabel}>{action.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ─── 新版今日快報 Banner ──────────────────────────────────
+function DailyBanner() {
+  return (
+    <View style={styles.dailyBanner}>
+      <Text style={styles.dailyBannerTitle}>今日法拍快報</Text>
+      <View style={styles.dailyBannerRow}>
+        <Text style={styles.dailyBannerText}>今日進件：20</Text>
+        <Text style={styles.dailyBannerText}>即將一拍：5</Text>
+        <Text style={styles.dailyBannerText}>流標降價：12</Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── FlashList Header 包含按鈕、Banner、以及推薦標題 ───
+function ListHeader() {
+  return (
+    <View style={styles.listHeaderContainer}>
+      <ActionsRow />
+      <DailyBanner />
+      <Text style={[styles.sectionTitle, { color: Colors.brandBlue, marginTop: Spacing.xl }]}>
+        為您推薦的點交好案
+      </Text>
     </View>
   );
 }
@@ -93,10 +103,12 @@ function countFilters(f: FilterState): number {
   ].filter(Boolean).length;
 }
 
-// ─── 主頁面 ───────────────────────────────────────────────
 const CITY_FILTERS = ['全部', '台北市', '台中市', '高雄市', '新北市'];
 
+// ─── 主頁面 ───────────────────────────────────────────────
 export default function ExploreScreen() {
+  const insets = useSafeAreaInsets();
+
   const [search, setSearch] = useState('');
   const [city, setCity] = useState('全部');
   const [showFilter, setShowFilter] = useState(false);
@@ -128,48 +140,54 @@ export default function ExploreScreen() {
   }, [city, search, filter]);
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.logo}>⚡ 法拍雷達</Text>
-          <Text style={styles.sub}>找到 {filtered.length} / {MOCK_PROPERTIES.length} 筆物件</Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.filterFab, activeCount > 0 && styles.filterFabActive]}
-          onPress={() => setShowFilter(true)}
-        >
-          <Text style={[styles.filterFabText, activeCount > 0 && styles.filterFabTextActive]}>
-            {activeCount > 0 ? `篩選 (${activeCount}) ✕` : '篩選 ⊕'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 搜尋列 */}
-      <View style={styles.searchRow}>
-        <TextInput
-          style={styles.search}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="搜尋地址、案號、法院..."
-          placeholderTextColor={Colors.textMuted}
-          clearButtonMode="while-editing"
-          returnKeyType="search"
-        />
-      </View>
-
-      {/* 縣市快篩 */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow} contentContainerStyle={{ paddingHorizontal: Spacing.lg, gap: Spacing.sm }}>
-        {CITY_FILTERS.map((c) => (
-          <TouchableOpacity
-            key={c}
-            onPress={() => setCity(c)}
-            style={[styles.cityChip, city === c && styles.cityChipActive]}
-          >
-            <Text style={[styles.cityChipText, city === c && styles.cityChipTextActive]}>{c}</Text>
+    <View style={styles.screen}>
+      {/* 藍色頂部 Header 區塊 */}
+      <View style={[styles.headerContainer, { paddingTop: insets.top + Spacing.sm }]}>
+        <View style={styles.headerTop}>
+          <Text style={styles.greetingText}>早安，投資客</Text>
+          <TouchableOpacity>
+            <Ionicons name="notifications" size={24} color="#FFFFFF" />
+            <View style={styles.bellBadge} />
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+        </View>
+
+        {/* 搜尋列 */}
+        <View style={styles.searchRow}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color={Colors.textDarkMuted} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="輸入案號、地址或社區..."
+              placeholderTextColor={Colors.textDarkMuted}
+              returnKeyType="search"
+            />
+          </View>
+          <TouchableOpacity
+            style={styles.filterBtn}
+            onPress={() => setShowFilter(true)}
+          >
+            <Ionicons name="options" size={22} color={activeCount > 0 ? Colors.brandBlue : Colors.textDarkMuted} />
+            {activeCount > 0 && <View style={styles.filterBadge} />}
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* 縣市快篩 - 與頂部略微分開 */}
+      <View style={styles.chipsWrapper}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow} contentContainerStyle={{ paddingHorizontal: Spacing.lg, gap: Spacing.sm }}>
+          {CITY_FILTERS.map((c) => (
+            <TouchableOpacity
+              key={c}
+              onPress={() => setCity(c)}
+              style={[styles.cityChip, city === c && styles.cityChipActive]}
+            >
+              <Text style={[styles.cityChipText, city === c && styles.cityChipTextActive]}>{c}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* 篩選中提示列 */}
       {activeCount > 0 && (
@@ -181,27 +199,21 @@ export default function ExploreScreen() {
         </View>
       )}
 
-      {/* 列表 */}
+      {/* 列表內容區塊 */}
       <FlashList
         data={filtered}
         keyExtractor={(item: Property) => item.id}
-        contentContainerStyle={{ paddingHorizontal: Spacing.lg }}
-        ListHeaderComponent={<AIBanner />}
+        contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: 100 }}
+        ListHeaderComponent={<ListHeader />}
         renderItem={({ item }: { item: Property }) => (
           <PropertyCard item={item} onPress={() => router.push(`/property/${item.id}`)} />
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>🔍</Text>
+            <Ionicons name="search-outline" size={48} color={Colors.textDarkMuted} style={styles.emptyIcon} />
             <Text style={styles.emptyText}>無符合物件</Text>
-            {activeCount > 0 && (
-              <TouchableOpacity onPress={() => setFilter(DEFAULT_FILTER)} style={styles.emptyReset}>
-                <Text style={styles.emptyResetText}>清除篩選條件</Text>
-              </TouchableOpacity>
-            )}
           </View>
         }
-        ListFooterComponent={<View style={{ height: Spacing.xl }} />}
       />
 
       {/* 進階篩選 Modal */}
@@ -211,77 +223,212 @@ export default function ExploreScreen() {
         onApply={(f) => setFilter(f)}
         onClose={() => setShowFilter(false)}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.bg },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.sm,
+  screen: { flex: 1, backgroundColor: Colors.bgLight },
+  // Header 藍底
+  headerContainer: {
+    backgroundColor: Colors.brandBlue,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.lg,
+    borderBottomLeftRadius: Radius.xl,
+    borderBottomRightRadius: Radius.xl,
   },
-  logo: { color: Colors.textPrimary, fontSize: Typography.xl, fontWeight: Typography.bold },
-  sub: { color: Colors.textMuted, fontSize: Typography.xs, marginTop: 2 },
-  filterFab: {
-    backgroundColor: Colors.primary + '22', borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs,
-    borderWidth: 1, borderColor: Colors.primary + '66',
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
   },
-  filterFabActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  filterFabText: { color: Colors.primary, fontSize: Typography.sm, fontWeight: Typography.semibold },
-  filterFabTextActive: { color: '#fff' },
-  searchRow: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm },
-  search: {
-    backgroundColor: Colors.surface, borderRadius: Radius.pill, borderWidth: 1,
-    borderColor: Colors.border, paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm, color: Colors.textPrimary, fontSize: Typography.base,
+  greetingText: {
+    color: '#FFF',
+    fontSize: Typography.xxl,
+    fontWeight: Typography.bold,
   },
-  chipRow: { flexGrow: 0, marginBottom: Spacing.md },
+  bellBadge: {
+    position: 'absolute',
+    top: -2, right: -2,
+    width: 8, height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+    borderWidth: 1, borderColor: Colors.brandBlue,
+  },
+  // Search
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  searchContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.md,
+    height: 44,
+  },
+  searchIcon: { marginRight: Spacing.sm },
+  searchInput: {
+    flex: 1,
+    color: Colors.textDarkPrimary,
+    fontSize: Typography.base,
+    height: '100%',
+  },
+  filterBtn: {
+    width: 44, height: 44,
+    backgroundColor: '#FFF',
+    borderRadius: Radius.pill,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: 10, right: 10,
+    width: 8, height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.brandBlue,
+  },
+  chipsWrapper: {
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  chipRow: { flexGrow: 0 },
   cityChip: {
-    borderRadius: Radius.pill, borderWidth: 1, borderColor: Colors.border,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs,
+    borderRadius: Radius.pill,
+    backgroundColor: '#FFF',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
   },
-  cityChipActive: { borderColor: Colors.primary, backgroundColor: Colors.primary + '22' },
-  cityChipText: { color: Colors.textMuted, fontSize: Typography.sm },
-  cityChipTextActive: { color: Colors.primary, fontWeight: Typography.semibold },
-  // 篩選中提示列
+  cityChipActive: {
+    borderColor: Colors.brandBlue,
+    backgroundColor: Colors.iconBg,
+  },
+  cityChipText: {
+    color: Colors.textDarkMuted,
+    fontSize: Typography.sm,
+    fontWeight: Typography.medium,
+  },
+  cityChipTextActive: {
+    color: Colors.brandBlue,
+    fontWeight: Typography.bold,
+  },
+  // Filter Banner
   filterBanner: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     backgroundColor: Colors.primary + '18', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.xs,
-    borderBottomWidth: 1, borderBottomColor: Colors.primary + '33',
+    marginBottom: Spacing.md,
   },
-  filterBannerText: { color: Colors.primary, fontSize: Typography.xs, fontWeight: Typography.medium },
+  filterBannerText: { color: Colors.brandBlue, fontSize: Typography.xs, fontWeight: Typography.medium },
   filterBannerReset: { color: Colors.riskHigh, fontSize: Typography.xs, fontWeight: Typography.semibold },
-  // AI Banner
-  aiBanner: {
-    backgroundColor: Colors.ai + '18', borderRadius: Radius.lg, borderWidth: 1,
-    borderColor: Colors.ai + '44', padding: Spacing.lg, marginBottom: Spacing.lg,
+  // List Header (Actions & Banner)
+  listHeaderContainer: {
+    marginBottom: Spacing.lg,
   },
-  aiLabel: { color: Colors.ai, fontSize: Typography.sm, fontWeight: Typography.semibold, marginBottom: Spacing.xs },
-  aiText: { color: Colors.textSecondary, fontSize: Typography.sm, lineHeight: 20, marginBottom: Spacing.sm },
-  aiBtn: { alignSelf: 'flex-start' },
-  aiBtnText: { color: Colors.ai, fontSize: Typography.sm, fontWeight: Typography.semibold },
-  // Card
+  sectionTitle: {
+    color: Colors.brandBlue,
+    fontSize: Typography.lg,
+    fontWeight: Typography.bold,
+    marginBottom: Spacing.md,
+  },
+  actionsContainer: {
+    marginTop: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  actionBtn: {
+    alignItems: 'center',
+    width: '23%',
+  },
+  actionIconWrapper: {
+    width: 60, height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.xs,
+  },
+  actionLabel: {
+    color: '#1E293B',
+    fontSize: Typography.sm,
+    fontWeight: Typography.medium,
+  },
+  // 快報 Banner
+  dailyBanner: {
+    backgroundColor: Colors.brandBlue,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginTop: Spacing.sm,
+  },
+  dailyBannerTitle: {
+    color: '#FFF',
+    fontSize: Typography.lg,
+    fontWeight: Typography.bold,
+    marginBottom: Spacing.md,
+  },
+  dailyBannerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dailyBannerText: {
+    color: '#D1D5DB', // 淺灰白字
+    fontSize: Typography.sm,
+  },
+  // 卡片
   card: {
-    backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1,
-    borderColor: Colors.border, padding: Spacing.lg, marginBottom: Spacing.md,
+    backgroundColor: Colors.cardLight,
+    borderRadius: Radius.lg,
+    flexDirection: 'row',
+    marginBottom: Spacing.md,
+    padding: Spacing.sm,
+    // 陰影
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  cardBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.sm, flexWrap: 'wrap' },
-  chip: { borderRadius: Radius.pill, borderWidth: 1, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
-  chipText: { fontSize: Typography.xs, fontWeight: Typography.medium },
-  riskBadge: { fontSize: Typography.xs, fontWeight: Typography.semibold },
-  cardAddress: { color: Colors.textPrimary, fontSize: Typography.base, fontWeight: Typography.medium, marginBottom: Spacing.xs },
-  cardMetaRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: Spacing.sm },
-  cardPrice: { color: Colors.accent, fontSize: Typography.xl, fontWeight: Typography.bold },
-  cardMeta: { color: Colors.textSecondary, fontSize: Typography.sm },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: Spacing.sm },
-  cardCourt: { color: Colors.textMuted, fontSize: Typography.xs },
-  cardDate: { color: Colors.primary, fontSize: Typography.xs, fontWeight: Typography.medium },
+  cardImage: {
+    width: 100,
+    height: 100,
+    borderRadius: Radius.md,
+    marginRight: Spacing.md,
+  },
+  cardContent: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  cardTag: {
+    color: Colors.textDarkPrimary,
+    fontSize: Typography.sm,
+    fontWeight: Typography.bold,
+    marginBottom: 4,
+  },
+  cardTitle: {
+    color: Colors.textDarkPrimary,
+    fontSize: Typography.sm,
+    lineHeight: 20,
+    marginBottom: 6,
+  },
+  cardPrice: {
+    color: Colors.brandBlue,
+    fontSize: Typography.lg,
+    fontWeight: Typography.bold,
+    marginBottom: 4,
+  },
+  cardDate: {
+    color: Colors.textDarkSecondary,
+    fontSize: Typography.xs,
+  },
   // Empty
   empty: { alignItems: 'center', paddingTop: Spacing.xxxl },
-  emptyIcon: { fontSize: 40, marginBottom: Spacing.md },
-  emptyText: { color: Colors.textSecondary, fontSize: Typography.lg },
-  emptyReset: { marginTop: Spacing.lg, backgroundColor: Colors.primary + '22', borderRadius: Radius.pill, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm, borderWidth: 1, borderColor: Colors.primary + '44' },
-  emptyResetText: { color: Colors.primary, fontSize: Typography.sm, fontWeight: Typography.semibold },
+  emptyIcon: { marginBottom: Spacing.md },
+  emptyText: { color: Colors.textDarkMuted, fontSize: Typography.lg },
 });
+

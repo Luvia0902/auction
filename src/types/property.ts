@@ -67,3 +67,14 @@ export interface AuctionResult {
     cancelled: number;
     pending: number;
 }
+
+// ─── 新增：每日案件清單型別 ───────────────────────────────
+export type CaseStatus = 'sold' | 'unsold' | 'cancelled';
+export interface AuctionCase {
+    id: string;
+    court: string;         // e.g. '台中地院'
+    caseNumber: string;    // e.g. '112司執字第1234號'
+    status: CaseStatus;
+    statusText: string;    // e.g. '得標 (1,500萬)', '流標 (進入二拍)', '停拍'
+    date: string;          // ISO8601
+}
