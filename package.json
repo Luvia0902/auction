@@ -3,10 +3,10 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
+    "android": "expo run:android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "sync-data": "npx tsx scripts/syncRealEstate.ts"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
@@ -50,7 +50,10 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "axios": "^1.13.5",
+    "dotenv": "^17.3.1",
     "react-test-renderer": "19.1.0",
+    "ts-node": "^10.9.2",
     "typescript": "~5.9.2"
   },
   "private": true
