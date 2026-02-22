@@ -28,7 +28,7 @@ jobs:
           node-version: 18
 
       - name: Install dependencies
-        run: npm ci
+        run: yarn install
 
       - name: Build Web App
         run: npx expo export -p web
