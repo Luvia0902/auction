@@ -39,7 +39,8 @@
       "expo-location"
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "baseUrl": "/auction"
     }
   }
 }
