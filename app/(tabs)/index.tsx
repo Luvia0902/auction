@@ -107,7 +107,7 @@ function countFilters(f: FilterState): number {
   ].filter(Boolean).length;
 }
 
-const CITY_FILTERS = ['全部', '彰化縣', '彰銀代處分', '台北市', '新北市', '桃園市', '台中市', '高雄市'];
+const CITY_FILTERS = ['全部', '銀行法拍', '彰化縣', '台北市', '新北市', '桃園市', '台中市', '高雄市'];
 
 // ─── 主頁面 ───────────────────────────────────────────────
 export default function ExploreScreen() {
@@ -138,8 +138,8 @@ export default function ExploreScreen() {
     return mergedData.filter((p) => {
       // 縣市快篩
       let matchCityChip = city === '全部' || p.city === city;
-      if (city === '彰銀代處分') {
-        matchCityChip = p.court === '彰化銀行';
+      if (city === '銀行法拍') {
+        matchCityChip = p.court.includes('銀行');
       }
 
       // 搜尋關鍵字

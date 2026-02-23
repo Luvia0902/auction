@@ -1,8 +1,8 @@
 // src/types/property.ts — 共用型別定義
 export type AuctionRound = 1 | 2 | 3 | 4;
 export type DeliveryStatus = 'delivery' | 'no-delivery';
-export type PropertyType = '住宅' | '商辦' | '廠房' | '土地' | '其他';
-export type AuctionOrg = '法拍屋' | '金拍屋' | '法務部';
+export type PropertyType = '住宅' | '商辦' | '廠房' | '土地' | '電梯大樓' | '透天厝' | '其他';
+export type AuctionOrg = '法拍屋' | '金拍屋' | '法務部' | '銀行代處分';
 export type BidResult = 'sold' | 'unsold' | 'cancelled' | 'pending';
 export type RiskLevel = 'high' | 'medium' | 'low';
 
