@@ -160,7 +160,7 @@ export default function ExploreScreen() {
       const matchDel = filter.deliveryTypes.length === 0 || filter.deliveryTypes.includes(p.delivery);
       const matchType = filter.propertyTypes.length === 0 || filter.propertyTypes.includes(p.propertyType);
       const matchCourt = filter.courts.length === 0 || filter.courts.includes(p.court);
-      const matchBank = filter.banks.length === 0 || filter.banks.includes(p.court);
+      const matchBank = filter.banks.length === 0 || filter.banks.some(b => p.court.includes(b.replace('銀行', '')) || b.includes(p.court.replace('銀行', '')));
       const matchRisk = filter.riskLevels.length === 0 || filter.riskLevels.includes(p.riskLevel);
       const matchPrMin = filter.priceMin == null || p.basePrice >= filter.priceMin;
       const matchPrMax = filter.priceMax == null || p.basePrice <= filter.priceMax;

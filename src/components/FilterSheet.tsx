@@ -54,7 +54,14 @@ const DISTRICTS_MAP: Record<string, string[]> = {
 };
 const PROPERTY_TYPES = ['公寓', '電梯大樓', '透天厝', '土地'];
 const COURTS = ['台北地院', '新北地院', '桃園地院', '台中地院', '高雄地院'];
-const BANKS = ['彰化銀行', '臺灣銀行'];
+const BANKS = [
+    '臺灣銀行', '土地銀行', '合作金庫', '第一銀行', '華南銀行', '彰化銀行',
+    '上海銀行', '台北富邦', '國泰世華', '高雄銀行', '兆豐銀行', '全國農業金庫',
+    '王道銀行', '台灣企銀', '渣打銀行', '台中銀行', '京城銀行', '匯豐銀行',
+    '華泰銀行', '新光銀行', '陽信銀行', '板信銀行', '三信銀行', '聯邦銀行',
+    '遠東銀行', '元大銀行', '永豐銀行', '玉山銀行', '凱基銀行', '星展銀行',
+    '台新銀行', '安泰銀行', '中國信託', '將來銀行', 'LINE Bank', '樂天銀行'
+];
 
 // ─── 輔助元件：群組按鈕 (Chip) ────────────────────────────
 function ChipGroup<T extends string | number>({
@@ -196,7 +203,7 @@ export default function FilterSheet({ visible, initialFilter, availableBanks, on
                     {/* 2.6 銀行法拍 */}
                     <ChipGroup
                         label="銀行法拍"
-                        options={availableBanks?.length ? availableBanks : BANKS}
+                        options={Array.from(new Set([...BANKS, ...(availableBanks || [])]))}
                         selected={f.banks}
                         onToggle={(v) => setF({ ...f, banks: toggle(f.banks, v) })}
                     />
