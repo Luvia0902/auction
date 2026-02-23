@@ -128,7 +128,7 @@ export default function ExploreScreen() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const data = await fetchRecentAuctions(200); // 擴大查詢筆數以包含較後面的銀行法拍案件
+      const data = await fetchRecentAuctions(2000); // 擴大查詢筆數以包含按 ID 排序較後的銀行法拍案件
       setRealProperties(data);
       const banks = await fetchAvailableBanks();
       setAvailableBanks(banks);

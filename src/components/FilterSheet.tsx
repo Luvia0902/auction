@@ -133,9 +133,6 @@ export default function FilterSheet({ visible, initialFilter, availableBanks, on
         onClose();
     };
 
-    // 模擬計算筆數
-    const resultCount = 124;
-
     return (
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
             <SafeAreaView style={gs.screen} edges={['top', 'bottom']}>
@@ -314,7 +311,7 @@ export default function FilterSheet({ visible, initialFilter, availableBanks, on
                 {/* 底部套用按鈕 */}
                 <SafeAreaView edges={['bottom']} style={gs.footer}>
                     <TouchableOpacity style={gs.applyBtn} onPress={handleApply}>
-                        <Text style={gs.applyBtnText}>顯示 {resultCount} 筆結果</Text>
+                        <Text style={gs.applyBtnText}>套用篩選條件</Text>
                     </TouchableOpacity>
                 </SafeAreaView>
             </SafeAreaView>
