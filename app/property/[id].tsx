@@ -15,7 +15,7 @@ import { useWatchlist } from '../../src/context/WatchlistContext';
 import { MOCK_PROPERTIES } from '../../src/data/mock';
 import { AIBiddingReport, generatePropertyReport } from '../../src/lib/api/gemini';
 import { searchPCCProjects, type PCCProject } from '../../src/lib/api/pcc';
-import { fetchRecentAuctions } from '../../src/lib/api/property';
+import { fetchPropertyById } from '../../src/lib/api/property';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
 import type { Property } from '../../src/types/property';
 
@@ -60,10 +60,9 @@ export default function PropertyDetailScreen() {
             setLoading(true);
             // 嘗試從 MOCK 或 真實抓回來的 Auctions 中找
             let found = MOCK_PROPERTIES.find((p) => p.id === id) || null;
-            if (!found) {
-                // 如果 Mock 找不到，嘗試抓最新 50 筆看有沒有
-                const realProps = await fetchRecentAuctions(50);
-                found = realProps.find(p => p.id === id) || null;
+            if (!found && id) {
+                // 如果 Mock 找不到，直接去資料庫抓單一 ID
+                found = await fetchPropertyById(id);
             }
             setProperty(found);
             setLoading(false);

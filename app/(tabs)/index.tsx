@@ -107,7 +107,7 @@ function countFilters(f: FilterState): number {
   ].filter(Boolean).length;
 }
 
-const CITY_FILTERS = ['全部', '台北市', '台中市', '高雄市', '新北市'];
+const CITY_FILTERS = ['全部', '彰化縣', '彰銀代處分', '台北市', '新北市', '桃園市', '台中市', '高雄市'];
 
 // ─── 主頁面 ───────────────────────────────────────────────
 export default function ExploreScreen() {
@@ -137,7 +137,11 @@ export default function ExploreScreen() {
   const filtered = useMemo(() => {
     return mergedData.filter((p) => {
       // 縣市快篩
-      const matchCityChip = city === '全部' || p.city === city;
+      let matchCityChip = city === '全部' || p.city === city;
+      if (city === '彰銀代處分') {
+        matchCityChip = p.court === '彰化銀行';
+      }
+
       // 搜尋關鍵字
       const q = search.trim();
       const matchSearch = !q ||
@@ -162,8 +166,8 @@ export default function ExploreScreen() {
       {/* 藍色頂部 Header 區塊 */}
       <View style={[styles.headerContainer, { paddingTop: insets.top + Spacing.sm }]}>
         <View style={styles.headerTop}>
-          <Text style={styles.greetingText}>早安，投資客</Text>
-          <TouchableOpacity>
+          <Text style={styles.greetingText}>彰銀專區已就緒</Text>
+          <TouchableOpacity onPress={() => router.push('/tools/notifications' as any)}>
             <Ionicons name="notifications" size={24} color="#FFFFFF" />
             <View style={styles.bellBadge} />
           </TouchableOpacity>

@@ -38,10 +38,10 @@ export async function fetchRealProperties(): Promise<Property[]> {
                 propertyType: '住宅',
                 area: data.area || 0,
                 floor: data.floor || '',
-                delivery: data.delivery === '有點交' ? 'delivery' : 'no-delivery',
-                riskLevel: 'low',
+                delivery: (data.delivery?.includes('有點交') || data.delivery === '有點交') ? 'delivery' : 'no-delivery',
+                riskLevel: (data.delivery?.includes('不點交')) ? 'high' : 'low',
                 riskItems: [],
-                imageUrls: [],
+                imageUrls: data.imageUrl ? [data.imageUrl] : (data.imageUrls || []),
                 isWatched: false
             };
 
@@ -99,10 +99,10 @@ export async function fetchRecentAuctions(limitCount: number = 10): Promise<Prop
                 propertyType: '住宅',
                 area: areaPing,
                 floor: data.floor || '',
-                delivery: data.delivery === '有點交' ? 'delivery' : 'no-delivery',
-                riskLevel: 'low',
+                delivery: (data.delivery?.includes('有點交') || data.delivery === '有點交') ? 'delivery' : 'no-delivery',
+                riskLevel: (data.delivery?.includes('不點交')) ? 'high' : 'low',
                 riskItems: [],
-                imageUrls: [],
+                imageUrls: data.imageUrl ? [data.imageUrl] : (data.imageUrls || []),
                 isWatched: false
             };
         });
@@ -201,5 +201,44 @@ export async function fetchRealEstateLocations(limitCount: number = 20): Promise
         return properties;
     } catch (e) {
         return [];
+    }
+}
+/**
+ * 根據 ID 抓取單一物件詳情
+ */
+export async function fetchPropertyById(id: string): Promise<Property | null> {
+    try {
+        const auctionRef = collection(db, 'auctions');
+        const snapshot = await getDocs(auctionRef); // 暫時用全拿過濾，未來建議用 doc(db, 'auctions', id)
+        const doc = snapshot.docs.find(d => d.id === id);
+
+        if (!doc) return null;
+
+        const data = doc.data();
+        return {
+            id: doc.id,
+            address: data.address || '未知地址',
+            city: data.address?.substring(0, 3) || '台北市',
+            district: data.address?.substring(3, 6) || '',
+            lat: data.lat || 25.033,
+            lng: data.lng || 121.56,
+            court: data.court || '法院',
+            caseNumber: data.caseNo || '',
+            org: '法拍屋',
+            auctionRound: (data.auctionRound as any) || 1,
+            auctionDate: data.date || '',
+            auctionTime: '10:00',
+            basePrice: (data.totalPrice || 0) * 10000,
+            propertyType: '住宅',
+            area: data.area || 0,
+            floor: data.floor || '',
+            delivery: (data.delivery?.includes('有點交') || data.delivery === '有點交') ? 'delivery' : 'no-delivery',
+            riskLevel: (data.delivery?.includes('不點交')) ? 'high' : 'low',
+            riskItems: [],
+            imageUrls: data.imageUrl ? [data.imageUrl] : (data.imageUrls || []),
+            isWatched: false
+        };
+    } catch (e) {
+        return null;
     }
 }

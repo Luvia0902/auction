@@ -40,7 +40,7 @@ export const DEFAULT_FILTER: FilterState = {
 };
 
 // ─── 選項資料 ─────────────────────────────────────────────
-const CITIES = ['台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市'];
+const CITIES = ['台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市', '彰化縣'];
 const DISTRICTS_MAP: Record<string, string[]> = {
     '台北市': ['大安區', '信義區', '內湖區', '士林區', '中正區', '萬華區'],
     '新北市': ['板橋區', '三重區', '中和區', '永和區', '新莊區', '淡水區'],
@@ -48,8 +48,10 @@ const DISTRICTS_MAP: Record<string, string[]> = {
     '台中市': ['西屯區', '南屯區', '北屯區', '一區', '豐原區'],
     '高雄市': ['三民區', '左營區', '鼓山區', '鳳山區', '楠梓區'],
     '台南市': ['永康區', '安南區', '東區', '北區', '中西區'],
+    '彰化縣': ['彰化市', '員林市', '和美鎮', '鹿港鎮', '溪湖鎮'],
 };
 const PROPERTY_TYPES = ['公寓', '電梯大樓', '透天厝', '土地'];
+const COURTS = ['台北地院', '新北地院', '桃園地院', '台中地院', '高雄地院', '彰化銀行'];
 
 // ─── 輔助元件：群組按鈕 (Chip) ────────────────────────────
 function ChipGroup<T extends string | number>({
@@ -177,6 +179,14 @@ export default function FilterSheet({ visible, initialFilter, onApply, onClose }
                             if (v === 4) return '第四拍';
                             return '特拍';
                         }}
+                    />
+
+                    {/* 2.5 拍賣機構 */}
+                    <ChipGroup
+                        label="拍賣機構"
+                        options={COURTS}
+                        selected={f.courts}
+                        onToggle={(v) => setF({ ...f, courts: toggle(f.courts, v) })}
                     />
 
                     {/* 3. 物件種類 */}

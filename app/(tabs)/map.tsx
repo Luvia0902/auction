@@ -44,6 +44,17 @@ function PropertyBottomCard({ p, onClose, onDetail }: { p: Property; onClose: ()
                                     🏢 實價行情
                                 </Text>
                             </View>
+                        ) : p.court === '彰化銀行' ? (
+                            <>
+                                <View style={[styles.roundBadge, { borderColor: Colors.primary, backgroundColor: Colors.primary + '11' }]}>
+                                    <Text style={[styles.roundBadgeText, { color: Colors.primary }]}>
+                                        🏦 彰銀代處分
+                                    </Text>
+                                </View>
+                                <Text style={[styles.deliveryBadge, { color: p.delivery === 'delivery' ? Colors.delivery : Colors.noDelivery }]}>
+                                    {p.delivery === 'delivery' ? '✅點交' : '⚠️不點交'}
+                                </Text>
+                            </>
                         ) : (
                             <>
                                 <View style={[styles.roundBadge, { borderColor: RISK_COLOR[p.riskLevel] + '88' }]}>

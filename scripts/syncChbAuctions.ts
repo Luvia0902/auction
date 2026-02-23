@@ -180,9 +180,12 @@ async function syncToFirestore(data: any[]) {
 
 async function backupToGoogleDrive(data: any[]) {
     if (data.length === 0) return;
-    log('💾 開始執行 Google Drive 2TB 空間備份 (彰銀法拍公告)...');
+    log('💾 開始執行 Google Drive 雲端備份 (彰銀法拍公告)...');
     try {
-        if (!fs.existsSync(TOKEN_PATH)) return;
+        if (!fs.existsSync(TOKEN_PATH)) {
+            log('⚠️ 找不到 token.json，跳過 Google Drive 上傳。請先執行授權。', true);
+            return;
+        }
         const tokenContent = fs.readFileSync(TOKEN_PATH, 'utf8');
         const auth = google.auth.fromJSON(JSON.parse(tokenContent));
         const drive = google.drive({ version: 'v3', auth: auth as any });
@@ -194,7 +197,7 @@ async function backupToGoogleDrive(data: any[]) {
         });
         log(`✅ 備份成功！檔案已存入 Google Drive: ${fileName}`);
     } catch (error: any) {
-        log(`Google Drive 備份失敗: ${error.message}`, true);
+        log(`❌ Google Drive 備份失敗: ${error.message}`, true);
     }
 }
 
@@ -202,11 +205,27 @@ async function startSync() {
     try {
         log("=== 🏦 彰化銀行法拍自動爬蟲開始 ===");
         const auctions = await fetchChbAuctionData();
-        await syncToFirestore(auctions);
+
+        if (auctions.length === 0) {
+            log("⚠️ 未抓取到任何資料，結束流程。");
+            return;
+        }
+
+        // 1. 備份到 Google Drive
         await backupToGoogleDrive(auctions);
+
+        // 2. 同步到 Firebase Firestore
+        try {
+            log("嘗試寫入 Firebase Firestore...");
+            await syncToFirestore(auctions);
+            log("✅ Firebase 同步成功！");
+        } catch (dbError: any) {
+            log(`⚠️ Firebase 同步失敗 (但不影響雲端備份): ${dbError.message}`, true);
+        }
+
         log("=== ✅ 彰銀法拍爬蟲流程完畢 ===");
     } catch (error: any) {
-        log(`同步失敗: ${error.message}`, true);
+        log(`同步過程中有嚴重錯誤: ${error.message}`, true);
     } finally {
         await uploadLogsToDrive('彰化銀行法拍');
         process.exit(0);
