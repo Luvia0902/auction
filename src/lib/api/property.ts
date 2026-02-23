@@ -242,3 +242,28 @@ export async function fetchPropertyById(id: string): Promise<Property | null> {
         return null;
     }
 }
+
+/**
+ * 從 Firestore 獲取所有包含 "銀行" 的獨立機構名稱
+ */
+export async function fetchAvailableBanks(): Promise<string[]> {
+    try {
+        const auctionRef = collection(db, 'auctions');
+        // 在真實生產環境中，如果資料量非常大，建議另外建一個 aggregated doc 來存 banks
+        // 這裡暫時全部拉下來去重
+        const snapshot = await getDocs(auctionRef);
+        const bankSet = new Set<string>();
+
+        snapshot.forEach(doc => {
+            const court = doc.data().court;
+            if (court && court.includes('銀行')) {
+                bankSet.add(court);
+            }
+        });
+
+        return Array.from(bankSet);
+    } catch (e) {
+        console.error('Failed to fetch available banks', e);
+        return ['彰化銀行', '臺灣銀行']; // fallback
+    }
+}

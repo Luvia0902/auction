@@ -27,6 +27,7 @@ export interface FilterState {
     dateTo: string | null;
     buildAgeMin: number | null;
     buildAgeMax: number | null;
+    banks: string[];
 }
 
 export const DEFAULT_FILTER: FilterState = {
@@ -37,6 +38,7 @@ export const DEFAULT_FILTER: FilterState = {
     courts: [], riskLevels: [],
     dateFrom: null, dateTo: null,
     buildAgeMin: null, buildAgeMax: null,
+    banks: [],
 };
 
 // ─── 選項資料 ─────────────────────────────────────────────
@@ -51,7 +53,8 @@ const DISTRICTS_MAP: Record<string, string[]> = {
     '彰化縣': ['彰化市', '員林市', '和美鎮', '鹿港鎮', '溪湖鎮'],
 };
 const PROPERTY_TYPES = ['公寓', '電梯大樓', '透天厝', '土地'];
-const COURTS = ['台北地院', '新北地院', '桃園地院', '台中地院', '高雄地院', '彰化銀行'];
+const COURTS = ['台北地院', '新北地院', '桃園地院', '台中地院', '高雄地院'];
+const BANKS = ['彰化銀行', '臺灣銀行'];
 
 // ─── 輔助元件：群組按鈕 (Chip) ────────────────────────────
 function ChipGroup<T extends string | number>({
@@ -95,11 +98,12 @@ function toggle<T>(arr: T[], val: T): T[] {
 interface FilterSheetProps {
     visible: boolean;
     initialFilter?: FilterState;
+    availableBanks?: string[];
     onApply: (f: FilterState) => void;
     onClose: () => void;
 }
 
-export default function FilterSheet({ visible, initialFilter, onApply, onClose }: FilterSheetProps) {
+export default function FilterSheet({ visible, initialFilter, availableBanks, onApply, onClose }: FilterSheetProps) {
     const [f, setF] = useState<FilterState>(initialFilter ?? DEFAULT_FILTER);
 
     // 價格 Slider 狀態 (0 ~ 5000)
@@ -187,6 +191,14 @@ export default function FilterSheet({ visible, initialFilter, onApply, onClose }
                         options={COURTS}
                         selected={f.courts}
                         onToggle={(v) => setF({ ...f, courts: toggle(f.courts, v) })}
+                    />
+
+                    {/* 2.6 銀行法拍 */}
+                    <ChipGroup
+                        label="銀行法拍"
+                        options={availableBanks?.length ? availableBanks : BANKS}
+                        selected={f.banks}
+                        onToggle={(v) => setF({ ...f, banks: toggle(f.banks, v) })}
                     />
 
                     {/* 3. 物件種類 */}

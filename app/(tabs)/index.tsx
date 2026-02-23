@@ -10,7 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FilterSheet, { DEFAULT_FILTER, FilterState } from '../../src/components/FilterSheet';
 import { MOCK_PROPERTIES } from '../../src/data/mock';
-import { fetchRecentAuctions } from '../../src/lib/api/property';
+import { fetchAvailableBanks, fetchRecentAuctions } from '../../src/lib/api/property';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
 import type { Property } from '../../src/types/property';
 
@@ -24,11 +24,14 @@ function PropertyCard({ item, onPress }: { item: Property; onPress: () => void }
   // 從 imageUrls 取出第一張或使用預設
   const imgUrl = item.imageUrls?.[0] || 'https://placehold.co/400x400/1E293B/3D7EFF?text=預設圖片';
 
+  const isBank = item.court?.includes('銀行');
+  const tagText = isBank ? `${item.court} 釋出物件` : '今日法拍快報';
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
       <Image source={imgUrl} style={styles.cardImage} contentFit="cover" />
       <View style={styles.cardContent}>
-        <Text style={styles.cardTag}>今日法拍快報</Text>
+        <Text style={[styles.cardTag, isBank && { color: '#F59E0B' }]}>{tagText}</Text>
         <Text style={styles.cardTitle} numberOfLines={2}>{item.address}</Text>
         <Text style={styles.cardPrice}>{formatPrice(item.basePrice)}</Text>
         <Text style={styles.cardDate}>法拍日期：{item.auctionDate.replace(/-/g, '/')}</Text>
@@ -102,6 +105,7 @@ function countFilters(f: FilterState): number {
     f.deliveryTypes.length > 0,
     f.propertyTypes.length > 0,
     f.courts.length > 0,
+    f.banks.length > 0,
     f.riskLevels.length > 0,
     f.priceMin != null || f.priceMax != null,
   ].filter(Boolean).length;
@@ -118,6 +122,7 @@ export default function ExploreScreen() {
   const [showFilter, setShowFilter] = useState(false);
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
   const [realProperties, setRealProperties] = useState<Property[]>([]);
+  const [availableBanks, setAvailableBanks] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -125,6 +130,8 @@ export default function ExploreScreen() {
       setLoading(true);
       const data = await fetchRecentAuctions(20);
       setRealProperties(data);
+      const banks = await fetchAvailableBanks();
+      setAvailableBanks(banks);
       setLoading(false);
     };
     load();
@@ -153,11 +160,12 @@ export default function ExploreScreen() {
       const matchDel = filter.deliveryTypes.length === 0 || filter.deliveryTypes.includes(p.delivery);
       const matchType = filter.propertyTypes.length === 0 || filter.propertyTypes.includes(p.propertyType);
       const matchCourt = filter.courts.length === 0 || filter.courts.includes(p.court);
+      const matchBank = filter.banks.length === 0 || filter.banks.includes(p.court);
       const matchRisk = filter.riskLevels.length === 0 || filter.riskLevels.includes(p.riskLevel);
       const matchPrMin = filter.priceMin == null || p.basePrice >= filter.priceMin;
       const matchPrMax = filter.priceMax == null || p.basePrice <= filter.priceMax;
       return matchCityChip && matchSearch && matchCity && matchRound &&
-        matchDel && matchType && matchCourt && matchRisk && matchPrMin && matchPrMax;
+        matchDel && matchType && matchCourt && matchBank && matchRisk && matchPrMin && matchPrMax;
     });
   }, [city, search, filter, mergedData]);
 
@@ -242,6 +250,7 @@ export default function ExploreScreen() {
       <FilterSheet
         visible={showFilter}
         initialFilter={filter}
+        availableBanks={availableBanks}
         onApply={(f) => setFilter(f)}
         onClose={() => setShowFilter(false)}
       />
