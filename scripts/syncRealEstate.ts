@@ -1,12 +1,53 @@
 import * as dotenv from 'dotenv';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { collection, doc, getFirestore, writeBatch } from 'firebase/firestore';
+import * as fs from 'fs';
+import { google } from 'googleapis';
+import * as path from 'path';
 
 // Load environmental variables from .env.local
 dotenv.config({ path: '.env.local' });
 
-// Debug env load
-console.log("Checking API KEY:", process.env.EXPO_PUBLIC_FIREBASE_API_KEY ? "Found" : "Missing");
+const FOLDER_ID = '14hI5OAJo8OobiflFUHSMo7X4wCVQKE-0';
+const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json');
+const TOKEN_PATH = path.join(process.cwd(), 'token.json');
+
+// --- 日誌系統 ---
+let logBuffer = '';
+function log(message: string, isError: boolean = false) {
+    const timestamp = new Date().toLocaleString('zh-TW');
+    const prefix = isError ? '❌ ' : '';
+    const line = `[${timestamp}] ${prefix}${message}`;
+    logBuffer += line + '\n';
+    if (isError) console.error(line);
+    else console.log(line);
+}
+
+async function uploadLogsToDrive(prefix: string) {
+    log(`📤 正在將執行日誌上傳至 Google Drive...`);
+    try {
+        if (!fs.existsSync(TOKEN_PATH)) return;
+        const tokenContent = fs.readFileSync(TOKEN_PATH, 'utf8');
+        const auth = google.auth.fromJSON(JSON.parse(tokenContent));
+        const drive = google.drive({ version: 'v3', auth: auth as any });
+
+        const fileName = `${prefix}_執行日誌_${new Date().toISOString().split('T')[0]}.txt`;
+
+        await drive.files.create({
+            requestBody: {
+                name: fileName,
+                parents: [FOLDER_ID],
+            },
+            media: {
+                mimeType: 'text/plain',
+                body: logBuffer,
+            },
+        });
+        console.log(`✅ 日誌上傳成功：${fileName}`);
+    } catch (e: any) {
+        console.error('❌ 日誌上傳失敗:', e.message);
+    }
+}
 
 // Initialize Firebase App in Node environment using Client Keys
 const firebaseConfig = {
@@ -35,10 +76,10 @@ export interface PricingRecord {
 }
 
 // 台北市真實實價登錄 API (Open Data)
-const TAIPEI_OPEN_DATA_URL = 'https://data.taipei/api/v1/dataset/13733?scope=resourceAquire&limit=300';
+const TAIPEI_OPEN_DATA_URL = 'https://data.taipei/api/v1/dataset/27263?scope=resourceAquire&limit=300';
 
 async function fetchFromGovernmentApi(): Promise<PricingRecord[]> {
-    console.log("嘗試使用 curl-like 參數從「台北市開放資料平台」下載 JSON...");
+    log("嘗試使用 curl-like 參數從「台北市開放資料平台」下載 JSON...");
 
     try {
         const res = await fetch(TAIPEI_OPEN_DATA_URL, {
@@ -65,7 +106,7 @@ async function fetchFromGovernmentApi(): Promise<PricingRecord[]> {
             throw new Error("無法解析有效的政府 JSON 陣列 (可能查無資料或回傳格式變更)");
         }
 
-        console.log(`✅ 成功下載並解析 ${rawData.length} 筆原始真實資料，準備清洗...`);
+        log(`成功下載並解析 ${rawData.length} 筆原始真實資料，準備清洗...`);
 
         // 取得前 300 筆處理
         const cleanedRecords: PricingRecord[] = rawData
@@ -96,24 +137,25 @@ async function fetchFromGovernmentApi(): Promise<PricingRecord[]> {
             });
 
         if (cleanedRecords.length === 0) {
-            console.warn("⚠️ 政府資料過濾後無任何有效筆數");
+            log("⚠️ 政府資料過濾後無任何有效筆數");
         }
         return cleanedRecords;
     } catch (e: any) {
-        console.error(`❌ 連線政府開放資料失敗: ${e.message}`);
-        console.warn("⚠️ 依據系統嚴格要求「禁止產生假測資」，本次同步將回傳空陣列，由前端顯示「無資料」狀態。");
-        return []; // 根據使用者需求，失敗時回傳空陣列也不要塞假資料
+        log(`連線政府開放資料失敗: ${e.message}`, true);
+        log("⚠️ 依據系統嚴格要求「禁止產生假測資」，本次同步將回傳空陣列。", true);
+        return [];
     }
 }
 
 async function fetchAndCleanData(): Promise<PricingRecord[]> {
-    console.log("📥 正在向政府真實開放資料平台獲取數據 (無模擬資料機制)...");
+    log("📥 正在向政府真實開放資料平台獲取數據 (無模擬資料機制)...");
     const records = await fetchFromGovernmentApi();
     return records;
 }
 
 async function syncToFirestore(data: PricingRecord[]) {
-    console.log(`📤 寫入 Firebase Firestore (Batch Write)...`);
+    if (data.length === 0) return;
+    log(`📤 寫入 Firebase Firestore (Batch Write)...`);
     const batch = writeBatch(db);
     const collectionRef = collection(db, 'real_estate');
 
@@ -123,19 +165,53 @@ async function syncToFirestore(data: PricingRecord[]) {
     });
 
     await batch.commit();
-    console.log(`🎉 成功同步 ${data.length} 筆資料至資料庫！`);
+    log(`🎉 成功同步 ${data.length} 筆資料至資料庫！`);
+}
+
+async function backupToGoogleDrive(data: PricingRecord[]) {
+    if (data.length === 0) return;
+    log('💾 開始執行 Google Drive 2TB 空間備份...');
+
+    try {
+        if (!fs.existsSync(TOKEN_PATH)) return;
+
+        const tokenContent = fs.readFileSync(TOKEN_PATH, 'utf8');
+        const auth = google.auth.fromJSON(JSON.parse(tokenContent));
+        const drive = google.drive({ version: 'v3', auth: auth as any });
+
+        const fileName = `實價登錄備份_${new Date().toISOString().split('T')[0]}.json`;
+
+        await drive.files.create({
+            requestBody: {
+                name: fileName,
+                parents: [FOLDER_ID],
+            },
+            media: {
+                mimeType: 'application/json',
+                body: JSON.stringify(data, null, 2),
+            },
+        });
+
+        log(`✅ 備份成功！檔案已存入 Google Drive: ${fileName}`);
+    } catch (error: any) {
+        log(`Google Drive 備份失敗: ${error.message}`, true);
+    }
 }
 
 async function startSync() {
     try {
-        console.log("=== 🚀 實價登錄資料後端同步腳本開始 ===");
+        log("=== 🚀 實價登錄資料後端同步腳本開始 ===");
         const cleanedRecords = await fetchAndCleanData();
+
         await syncToFirestore(cleanedRecords);
-        console.log("=== ✅ 同步流程結束 ===");
+        await backupToGoogleDrive(cleanedRecords);
+
+        log("=== ✅ 同步與備份流程結束 ===");
+    } catch (error: any) {
+        log(`同步失敗: ${error.message}`, true);
+    } finally {
+        await uploadLogsToDrive('實價登錄');
         process.exit(0);
-    } catch (error) {
-        console.error("❌ 同步失敗:", error instanceof Error ? error.message : error);
-        process.exit(1);
     }
 }
 

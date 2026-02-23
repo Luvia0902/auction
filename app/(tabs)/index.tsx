@@ -1,9 +1,8 @@
-// app/(tabs)/index.tsx — 🔍 探索頁（整合設計圖新版型）
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ScrollView, StyleSheet, Text, TextInput,
   TouchableOpacity, View,
@@ -11,6 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FilterSheet, { DEFAULT_FILTER, FilterState } from '../../src/components/FilterSheet';
 import { MOCK_PROPERTIES } from '../../src/data/mock';
+import { fetchRecentAuctions } from '../../src/lib/api/property';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
 import type { Property } from '../../src/types/property';
 
@@ -40,18 +40,22 @@ function PropertyCard({ item, onPress }: { item: Property; onPress: () => void }
 // ─── 新版四大功能按鈕區塊 ────────────────────────────────
 function ActionsRow() {
   const actions = [
-    { id: 'schedule', label: '投標總表', icon: 'gavel', bg: Colors.iconBg },
-    { id: 'results', label: '開標結果', icon: 'list-ul', bg: Colors.iconBg },
-    { id: 'history', label: '實價登錄', icon: 'file-alt', bg: Colors.iconBg },
-    { id: 'ai', label: 'AI 幫我找', icon: 'robot', bg: Colors.iconBg },
+    { id: 'schedule', label: '投標總表', icon: 'gavel', bg: Colors.iconBg, route: '/schedule' },
+    { id: 'results', label: '開標結果', icon: 'list-ul', bg: Colors.iconBg, route: '/schedule' },
+    { id: 'history', label: '實價登錄', icon: 'file-alt', bg: Colors.iconBg, route: '/price-registry' },
+    { id: 'ai', label: 'AI 幫我找', icon: 'robot', bg: Colors.iconBg, route: '/index' },
   ];
 
   return (
     <View style={styles.actionsContainer}>
-      <Text style={styles.sectionTitle}>投標總表</Text>
+      <Text style={styles.sectionTitle}>快速導覽</Text>
       <View style={styles.actionsRow}>
         {actions.map(action => (
-          <TouchableOpacity key={action.id} style={styles.actionBtn}>
+          <TouchableOpacity
+            key={action.id}
+            style={styles.actionBtn}
+            onPress={() => router.push(action.route as any)}
+          >
             <View style={[styles.actionIconWrapper, { backgroundColor: action.bg }]}>
               <FontAwesome5 name={action.icon} size={22} color={Colors.brandBlue} />
             </View>
@@ -64,12 +68,12 @@ function ActionsRow() {
 }
 
 // ─── 新版今日快報 Banner ──────────────────────────────────
-function DailyBanner() {
+function DailyBanner({ count }: { count: number }) {
   return (
     <View style={styles.dailyBanner}>
-      <Text style={styles.dailyBannerTitle}>今日法拍快報</Text>
+      <Text style={styles.dailyBannerTitle}>今日法拍快報 (大數據同步中)</Text>
       <View style={styles.dailyBannerRow}>
-        <Text style={styles.dailyBannerText}>今日進件：20</Text>
+        <Text style={styles.dailyBannerText}>今日進件：{count}</Text>
         <Text style={styles.dailyBannerText}>即將一拍：5</Text>
         <Text style={styles.dailyBannerText}>流標降價：12</Text>
       </View>
@@ -78,11 +82,11 @@ function DailyBanner() {
 }
 
 // ─── FlashList Header 包含按鈕、Banner、以及推薦標題 ───
-function ListHeader() {
+function ListHeader({ realCount }: { realCount: number }) {
   return (
     <View style={styles.listHeaderContainer}>
       <ActionsRow />
-      <DailyBanner />
+      <DailyBanner count={realCount} />
       <Text style={[styles.sectionTitle, { color: Colors.brandBlue, marginTop: Spacing.xl }]}>
         為您推薦的點交好案
       </Text>
@@ -113,11 +117,25 @@ export default function ExploreScreen() {
   const [city, setCity] = useState('全部');
   const [showFilter, setShowFilter] = useState(false);
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
+  const [realProperties, setRealProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const data = await fetchRecentAuctions(20);
+      setRealProperties(data);
+      setLoading(false);
+    };
+    load();
+  }, []);
 
   const activeCount = countFilters(filter);
 
+  const mergedData = useMemo(() => [...MOCK_PROPERTIES, ...realProperties], [realProperties]);
+
   const filtered = useMemo(() => {
-    return MOCK_PROPERTIES.filter((p) => {
+    return mergedData.filter((p) => {
       // 縣市快篩
       const matchCityChip = city === '全部' || p.city === city;
       // 搜尋關鍵字
@@ -137,7 +155,7 @@ export default function ExploreScreen() {
       return matchCityChip && matchSearch && matchCity && matchRound &&
         matchDel && matchType && matchCourt && matchRisk && matchPrMin && matchPrMax;
     });
-  }, [city, search, filter]);
+  }, [city, search, filter, mergedData]);
 
   return (
     <View style={styles.screen}>
@@ -204,7 +222,7 @@ export default function ExploreScreen() {
         data={filtered}
         keyExtractor={(item: Property) => item.id}
         contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: 100 }}
-        ListHeaderComponent={<ListHeader />}
+        ListHeaderComponent={<ListHeader realCount={realProperties.length} />}
         renderItem={({ item }: { item: Property }) => (
           <PropertyCard item={item} onPress={() => router.push(`/property/${item.id}`)} />
         )}

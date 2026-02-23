@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import FilterSheet, { DEFAULT_FILTER, FilterState } from '../../src/components/FilterSheet';
 import WebMap from '../../src/components/WebMap';
 import { MOCK_PROPERTIES } from '../../src/data/mock';
+import { fetchRealEstateLocations, fetchRealProperties } from '../../src/lib/api/property';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
 import type { Property } from '../../src/types/property';
 
@@ -29,6 +30,7 @@ function PropertyBottomCard({ p, onClose, onDetail }: { p: Property; onClose: ()
     }, [p.id]);
 
     const fmt = (n: number) => `${(n / 10000).toFixed(0)}萬`;
+    const isRealEstate = p.court === '實價登錄';
 
     return (
         <Animated.View style={[styles.bottomCard, { transform: [{ translateY: slideAnim }] }]}>
@@ -36,22 +38,39 @@ function PropertyBottomCard({ p, onClose, onDetail }: { p: Property; onClose: ()
             <View style={styles.bottomRow}>
                 <View style={{ flex: 1 }}>
                     <View style={styles.bottomBadgeRow}>
-                        <View style={[styles.roundBadge, { borderColor: RISK_COLOR[p.riskLevel] + '88' }]}>
-                            <Text style={[styles.roundBadgeText, { color: RISK_COLOR[p.riskLevel] }]}>
-                                {RISK_EMOJI[p.riskLevel]} {p.auctionRound}拍
-                            </Text>
-                        </View>
-                        <Text style={[styles.deliveryBadge, { color: p.delivery === 'delivery' ? Colors.delivery : Colors.noDelivery }]}>
-                            {p.delivery === 'delivery' ? '✅點交' : '⚠️不點交'}
-                        </Text>
+                        {isRealEstate ? (
+                            <View style={[styles.roundBadge, { borderColor: '#888' }]}>
+                                <Text style={[styles.roundBadgeText, { color: '#666' }]}>
+                                    🏢 實價行情
+                                </Text>
+                            </View>
+                        ) : (
+                            <>
+                                <View style={[styles.roundBadge, { borderColor: RISK_COLOR[p.riskLevel] + '88' }]}>
+                                    <Text style={[styles.roundBadgeText, { color: RISK_COLOR[p.riskLevel] }]}>
+                                        {RISK_EMOJI[p.riskLevel]} {p.auctionRound}拍
+                                    </Text>
+                                </View>
+                                <Text style={[styles.deliveryBadge, { color: p.delivery === 'delivery' ? Colors.delivery : Colors.noDelivery }]}>
+                                    {p.delivery === 'delivery' ? '✅點交' : '⚠️不點交'}
+                                </Text>
+                            </>
+                        )}
                     </View>
                     <Text style={styles.bottomAddr} numberOfLines={1}>{p.address}</Text>
                     <Text style={styles.bottomPrice}>¥ {fmt(p.basePrice)}</Text>
-                    <Text style={styles.bottomMeta}>{p.court} · {p.area} 坪 · 📅 {p.auctionDate.slice(5)}</Text>
+                    <Text style={styles.bottomMeta}>
+                        {isRealEstate
+                            ? `${p.court} · ${p.area} 坪 · 📅 ${p.auctionDate.slice(5)}`
+                            : `${p.court} · ${p.area} 坪 · 📅 ${p.auctionDate.slice(5)}`
+                        }
+                    </Text>
                 </View>
-                <TouchableOpacity style={styles.detailBtn} onPress={onDetail}>
-                    <Text style={styles.detailBtnText}>查看{'\n'}詳情 →</Text>
-                </TouchableOpacity>
+                {!isRealEstate && (
+                    <TouchableOpacity style={styles.detailBtn} onPress={onDetail}>
+                        <Text style={styles.detailBtnText}>查看{'\n'}詳情 →</Text>
+                    </TouchableOpacity>
+                )}
             </View>
             <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
                 <Text style={styles.closeBtnText}>✕</Text>
@@ -59,8 +78,6 @@ function PropertyBottomCard({ p, onClose, onDetail }: { p: Property; onClose: ()
         </Animated.View>
     );
 }
-
-
 
 // ─── Native 地圖 ──────────────────────────────────────────
 let MapView: React.ComponentType<any> | null = null;
@@ -120,7 +137,7 @@ function NativeMap({ selected, onSelect, data }: { selected: Property | null; on
                     key={p.id}
                     coordinate={{ latitude: p.lat ?? 25, longitude: p.lng ?? 121 }}
                     onPress={() => onSelect(p)}
-                    pinColor={RISK_COLOR[p.riskLevel]}
+                    pinColor={p.court === '實價登錄' ? 'purple' : RISK_COLOR[p.riskLevel]}
                 />
             ))}
         </MapView>
@@ -133,10 +150,37 @@ export default function MapScreen() {
     const [showFilter, setShowFilter] = useState(false);
     const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
 
+    const [realData, setRealData] = useState<Property[]>([]);
+    const [realEstateData, setRealEstateData] = useState<Property[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        const load = async () => {
+            setLoading(true);
+            try {
+                const [auctionData, estateData] = await Promise.all([
+                    fetchRealProperties(),
+                    fetchRealEstateLocations(30)
+                ]);
+                setRealData(auctionData);
+                setRealEstateData(estateData);
+            } catch (e) {
+                console.log('Load Real Data Failed:', e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        load();
+    }, []);
+
     const isWeb = Platform.OS === 'web';
 
+    const mergedData = useMemo(() => [...MOCK_PROPERTIES, ...realData, ...realEstateData], [realData, realEstateData]);
+
     const filtered = useMemo(() => {
-        return MOCK_PROPERTIES.filter((p) => {
+        return mergedData.filter((p) => {
+            if (p.court === '實價登錄') return true; // 實價登錄不套用全部過濾條件 (暫定顯示全部以供參考)
+
             const matchCity = filter.cities.length === 0 || filter.cities.includes(p.city);
             const matchRound = filter.auctionRounds.length === 0 || filter.auctionRounds.includes(p.auctionRound);
             const matchDel = filter.deliveryTypes.length === 0 || filter.deliveryTypes.includes(p.delivery);
@@ -147,14 +191,14 @@ export default function MapScreen() {
             const matchPrMax = filter.priceMax == null || p.basePrice <= filter.priceMax;
             return matchCity && matchRound && matchDel && matchType && matchCourt && matchRisk && matchPrMin && matchPrMax;
         });
-    }, [filter]);
+    }, [filter, mergedData]);
 
     return (
         <View style={styles.screen}>
             <SafeAreaView edges={['top']} style={styles.topBar}>
                 <View style={styles.headerRow}>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.topTitle}>🗺️ 地圖找物件</Text>
+                        <Text style={styles.topTitle}>🗺️ 地圖找物件 {loading && '(載入真實數據中...)'}</Text>
                         <View style={styles.legendRow}>
                             <Text style={styles.legendItem}>🔴 高風險</Text>
                             <Text style={styles.legendItem}>🟡 中風險</Text>

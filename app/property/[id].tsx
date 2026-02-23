@@ -10,9 +10,14 @@ import {
     TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../../src/context/AuthContext';
+import { useWatchlist } from '../../src/context/WatchlistContext';
 import { MOCK_PROPERTIES } from '../../src/data/mock';
-import { fetchAISummary, type AISummaryResult } from '../../src/lib/gemini';
+import { AIBiddingReport, generatePropertyReport } from '../../src/lib/api/gemini';
+import { searchPCCProjects, type PCCProject } from '../../src/lib/api/pcc';
+import { fetchRecentAuctions } from '../../src/lib/api/property';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
+import type { Property } from '../../src/types/property';
 
 const { width } = Dimensions.get('window');
 
@@ -35,28 +40,71 @@ const ADVANCED_FEATURES = [
 export default function PropertyDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const insets = useSafeAreaInsets();
+    const { isVIP } = useAuth();
+    const { isWatched, toggleWatch } = useWatchlist();
+
+    const [property, setProperty] = useState<Property | null>(null);
+    const [loading, setLoading] = useState(true);
 
     // AI 狀態
-    const [aiResult, setAiResult] = useState<AISummaryResult | null>(null);
-    const [aiLoading, setAiLoading] = useState(true);
+    const [aiReport, setAiReport] = useState<AIBiddingReport | null>(null);
+    const [aiGenerating, setAiGenerating] = useState(false);
 
-    const property = MOCK_PROPERTIES.find((p) => p.id === id);
+    // VIP PCC 狀態
+    const [pccProjects, setPccProjects] = useState<PCCProject[]>([]);
+    const [pccLoading, setPccLoading] = useState(false);
 
+    // 抓取物件資料
     useEffect(() => {
-        if (!property) return;
-        const fetchData = async () => {
-            setAiLoading(true);
+        const loadProp = async () => {
+            setLoading(true);
+            // 嘗試從 MOCK 或 真實抓回來的 Auctions 中找
+            let found = MOCK_PROPERTIES.find((p) => p.id === id) || null;
+            if (!found) {
+                // 如果 Mock 找不到，嘗試抓最新 50 筆看有沒有
+                const realProps = await fetchRecentAuctions(50);
+                found = realProps.find(p => p.id === id) || null;
+            }
+            setProperty(found);
+            setLoading(false);
+        };
+        loadProp();
+    }, [id]);
+
+    // VIP PCC 資料載入
+    useEffect(() => {
+        if (!property || !isVIP) return;
+        const fetchPcc = async () => {
+            setPccLoading(true);
             try {
-                const r = await fetchAISummary(property);
-                setAiResult(r);
-            } catch (e: unknown) {
-                console.log('AI Fetch Failed:', e);
+                const regionKeyword = property.address.substring(0, 6);
+                const pcc = await searchPCCProjects(regionKeyword);
+                setPccProjects(pcc);
+            } catch (e) {
+                console.log('PCC Fetch Failed:', e);
             } finally {
-                setAiLoading(false);
+                setPccLoading(false);
             }
         };
-        fetchData();
-    }, [property]);
+        fetchPcc();
+    }, [property, isVIP]);
+
+    const handleGenerateAI = async () => {
+        if (!property) return;
+        setAiGenerating(true);
+        const report = await generatePropertyReport(property);
+        setAiReport(report);
+        setAiGenerating(false);
+    };
+
+    if (loading) {
+        return (
+            <SafeAreaView style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color={Colors.brandBlue} />
+                <Text style={{ marginTop: Spacing.md, color: Colors.brandBlue }}>載入案件資料中...</Text>
+            </SafeAreaView>
+        );
+    }
 
     if (!property) {
         return (
@@ -73,6 +121,7 @@ export default function PropertyDetailScreen() {
 
     // 隨機選一張圖當首圖
     const imgUrl = property.imageUrls?.[0] || 'https://placehold.co/800x600/13337A/FFFFFF?text=建案圖片';
+    const watched = isWatched(property.id);
 
     return (
         <View style={styles.screen}>
@@ -86,8 +135,8 @@ export default function PropertyDetailScreen() {
                         <TouchableOpacity onPress={() => router.back()} style={styles.heroNavIcon}>
                             <Ionicons name="chevron-back" size={28} color="#FFF" />
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.heroNavIcon}>
-                            <Ionicons name="heart-outline" size={28} color="#FFF" />
+                        <TouchableOpacity style={styles.heroNavIcon} onPress={() => toggleWatch(property.id)}>
+                            <Ionicons name={watched ? "heart" : "heart-outline"} size={28} color={watched ? "#EF4444" : "#FFF"} />
                         </TouchableOpacity>
                     </View>
 
@@ -113,20 +162,46 @@ export default function PropertyDetailScreen() {
                         </Text>
                     </View>
 
-                    {/* 3. AI 筆錄分析風險 (黃色警示框) */}
+                    {/* 3. AI 標書專家建議 (Gemini) */}
                     <View style={styles.aiRiskBox}>
                         <View style={styles.aiRiskHeaderRow}>
-                            <Text style={styles.aiRiskIcon}>⚠️</Text>
-                            <Text style={styles.aiRiskTitle}>AI 筆錄分析風險</Text>
+                            <Text style={styles.aiRiskIcon}>🤖</Text>
+                            <Text style={styles.aiRiskTitle}>AI 投標專家分析</Text>
                         </View>
-                        {aiLoading ? (
-                            <ActivityIndicator size="small" color={Colors.accent} style={{ marginTop: Spacing.sm }} />
+
+                        {!aiReport ? (
+                            <View style={{ alignItems: 'center', marginVertical: Spacing.md }}>
+                                <Text style={{ color: Colors.textDarkSecondary, marginBottom: Spacing.md, textAlign: 'center' }}>
+                                    透過 Google Gemini 大數據模型，立即針對此物件的法拍次數、底價與點交狀態產生專屬分析建議。
+                                </Text>
+                                <TouchableOpacity
+                                    style={styles.generateAiBtn}
+                                    onPress={handleGenerateAI}
+                                    disabled={aiGenerating}
+                                >
+                                    {aiGenerating ? (
+                                        <ActivityIndicator color="#FFF" />
+                                    ) : (
+                                        <Text style={styles.generateAiBtnText}>一鍵產生專家鑑價報告</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
                         ) : (
-                            <Text style={styles.aiRiskText}>
-                                {aiResult?.risks?.length
-                                    ? aiResult.risks[0]
-                                    : "此物件目前無明顯特殊風險描述，但可能需注意法院公告之其他約定事項。"}
-                            </Text>
+                            <View style={styles.aiResultContainer}>
+                                <Text style={styles.aiSummaryText}>💡 {aiReport.summary}</Text>
+
+                                <View style={styles.aiResultRow}>
+                                    <View style={styles.aiDetailBox}>
+                                        <Text style={styles.aiDetailLabel}>風險指數</Text>
+                                        <Text style={[styles.aiDetailValue, { color: aiReport.riskScore > 6 ? Colors.accent : Colors.brandBlue }]}>
+                                            {aiReport.riskScore} <Text style={{ fontSize: 12 }}>/10</Text>
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                <Text style={styles.aiDetailText}><Text style={{ fontWeight: 'bold' }}>進場建議：</Text>{aiReport.advice}</Text>
+                                <Text style={styles.aiDetailText}><Text style={{ fontWeight: 'bold' }}>利潤分析：</Text>{aiReport.profitAnalysis}</Text>
+                            </View>
                         )}
                     </View>
 
@@ -167,7 +242,44 @@ export default function PropertyDetailScreen() {
                         </View>
                     </View>
 
-                    {/* 5. 法拍神器與進階資料 (VIP) */}
+                    {/* 5. VIP 區域潛力評估 (PCC 大數據專區) */}
+                    {isVIP && (
+                        <View style={styles.vipSection}>
+                            <View style={styles.vipHeaderRow}>
+                                <MaterialCommunityIcons name="crown" size={24} color="#FFD700" />
+                                <Text style={styles.vipTitle}>VIP 區域潛力評估 (區域標案大數據)</Text>
+                            </View>
+
+                            <Text style={styles.vipSub}>
+                                🔍 正在監控鄰近區域的政府重要建設標案，作為未來增值與整修成本參考：
+                            </Text>
+
+                            {pccLoading ? (
+                                <ActivityIndicator color={Colors.brandBlue} style={{ marginVertical: Spacing.lg }} />
+                            ) : pccProjects.length > 0 ? (
+                                <View style={styles.pccList}>
+                                    {pccProjects.map((p, i) => (
+                                        <View key={i} style={styles.pccItem}>
+                                            <View style={styles.pccDot} />
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.pccTitle} numberOfLines={1}>{p.title}</Text>
+                                                <Text style={styles.pccMeta}>
+                                                    {p.unit_name} | {p.date} {p.amount ? `| 決標：${Math.round(p.amount / 10000)}萬` : ''}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    ))}
+                                    <TouchableOpacity style={styles.vipAnalyzeBtn}>
+                                        <Text style={styles.vipAnalyzeText}>一鍵 AI 分析區域發展潛力</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ) : (
+                                <Text style={styles.emptyText}>暫無鄰近區域的大型政府標案資訊。</Text>
+                            )}
+                        </View>
+                    )}
+
+                    {/* 6. 法拍神器與進階資料 (VIP) */}
                     <View style={styles.sectionBlock}>
                         <Text style={styles.sectionTitle}>法拍神器與進階資料 (VIP)</Text>
 
@@ -272,7 +384,51 @@ const styles = StyleSheet.create({
     aiRiskHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.xs },
     aiRiskIcon: { fontSize: 20, marginRight: 6 },
     aiRiskTitle: { color: '#4A4A4A', fontSize: Typography.base, fontWeight: 'bold' },
-    aiRiskText: { color: '#555', fontSize: Typography.sm, lineHeight: 22 },
+
+    generateAiBtn: {
+        backgroundColor: Colors.brandBlue,
+        paddingHorizontal: Spacing.xl,
+        paddingVertical: Spacing.sm,
+        borderRadius: Radius.pill,
+        marginTop: Spacing.sm,
+    },
+    generateAiBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: Typography.sm },
+
+    aiResultContainer: { marginTop: Spacing.sm },
+    aiSummaryText: { fontSize: Typography.md, color: Colors.textDarkPrimary, fontWeight: '600', marginBottom: Spacing.md, lineHeight: 22 },
+    aiResultRow: { flexDirection: 'row', gap: Spacing.md, marginBottom: Spacing.md },
+    aiDetailBox: {
+        flex: 1, backgroundColor: 'rgba(255,255,255,0.6)',
+        borderRadius: Radius.md, padding: Spacing.sm, alignItems: 'center'
+    },
+    aiDetailLabel: { fontSize: Typography.xs, color: Colors.textDarkMuted, marginBottom: 2 },
+    aiDetailValue: { fontSize: Typography.xl, fontWeight: '900' },
+    aiDetailText: { fontSize: Typography.sm, color: Colors.textDarkSecondary, lineHeight: 20, marginBottom: 8 },
+
+    // ── VIP PCC 專區款式 ──
+    vipSection: {
+        backgroundColor: '#1A1C1E', // 深色專業底
+        borderRadius: Radius.lg,
+        padding: Spacing.lg,
+        marginBottom: Spacing.xl,
+        borderWidth: 1, borderColor: '#333'
+    },
+    vipHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.sm, gap: 8 },
+    vipTitle: { color: '#FFD700', fontSize: Typography.base, fontWeight: '800' },
+    vipSub: { color: '#AAA', fontSize: 12, marginBottom: Spacing.md, lineHeight: 18 },
+    pccList: { gap: Spacing.sm },
+    pccItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 4 },
+    pccDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFD700', marginTop: 8 },
+    pccTitle: { color: '#EEE', fontSize: 14, fontWeight: '600' },
+    pccMeta: { color: '#888', fontSize: 11, marginTop: 2 },
+    vipAnalyzeBtn: {
+        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+        borderWidth: 1, borderColor: '#FFD700',
+        borderRadius: Radius.sm, paddingVertical: Spacing.sm,
+        alignItems: 'center', marginTop: Spacing.md
+    },
+    vipAnalyzeText: { color: '#FFD700', fontSize: 13, fontWeight: 'bold' },
+    emptyText: { color: '#666', fontSize: 13, textAlign: 'center', fontStyle: 'italic' },
 
     // 4. Section Blocks
     sectionBlock: { marginBottom: Spacing.xl },

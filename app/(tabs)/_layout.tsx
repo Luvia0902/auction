@@ -54,10 +54,10 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
-                name="watch"
+                name="portfolio"
                 options={{
                     title: '追蹤',
-                    tabBarIcon: ({ focused }) => <TabIcon emoji="⭐" focused={focused} />,
+                    tabBarIcon: ({ focused }) => <TabIcon emoji="❤️" focused={focused} />,
                 }}
             />
             <Tabs.Screen

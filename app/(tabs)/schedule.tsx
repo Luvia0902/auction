@@ -1,61 +1,89 @@
-// app/(tabs)/schedule.tsx — 開標行事曆與結果 (stitch4)
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
     FlatList,
     ScrollView, StyleSheet, Text,
     TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MOCK_CASES, MOCK_RESULTS, MOCK_SCHEDULE } from '../../src/data/mock';
+import { fetchAuctionSchedule } from '../../src/lib/api/property';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
 import type { AuctionCase } from '../../src/types/property';
 
 export default function ScheduleScreen() {
-    // 預設選中 02/20 這個有資料的日期
-    const [selectedDate, setSelectedDate] = useState('2026-02-20');
+    const [loading, setLoading] = useState(true);
+    const [allSchedule, setAllSchedule] = useState<{ date: string, cases: any[] }[]>([]);
+    const [selectedDate, setSelectedDate] = useState('');
 
-    // 取得選中日期的結果統計 (若無則給預設 0)
-    const resultSummary = MOCK_RESULTS.find((r) => r.date === selectedDate) || {
-        total: 0, sold: 0, unsold: 0, cancelled: 0
-    };
+    useEffect(() => {
+        const load = async () => {
+            setLoading(true);
+            const data = await fetchAuctionSchedule();
+            setAllSchedule(data);
+            if (data.length > 0) {
+                setSelectedDate(data[0].date);
+            }
+            setLoading(false);
+        };
+        load();
+    }, []);
 
     // 取得選中日期的個別案件
-    const cases = MOCK_CASES.filter((c) => c.date === selectedDate);
+    const selectedDay = allSchedule.find(d => d.date === selectedDate);
+    const cases = selectedDay ? selectedDay.cases : [];
 
-    // 幫助函數：依據狀態取得對應的樣式與 Icon
-    const getStatusStyle = (status: AuctionCase['status']) => {
+    // 統計計算
+    const resultSummary = {
+        total: cases.length,
+        sold: cases.filter(c => c.status === 'sold').length,
+        unsold: cases.filter(c => c.status === 'unsold').length,
+        cancelled: cases.filter(c => c.status === 'cancelled').length,
+    };
+
+    const getStatusStyle = (status: any) => {
         switch (status) {
             case 'sold': return { color: '#10B981', bg: '#D1FAE5', icon: 'checkmark-circle' };
             case 'unsold': return { color: '#64748B', bg: '#E2E8F0', icon: 'close-circle' };
             case 'cancelled': return { color: '#EF4444', bg: '#FEE2E2', icon: 'remove-circle' };
+            default: return { color: Colors.brandBlue, bg: '#E8EDF6', icon: 'time-outline' };
         }
     };
 
     // 渲染上方日期橫幅
-    const renderDateSelector = () => (
-        <View style={styles.dateSelectorWrapper}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateScroll}>
-                {MOCK_SCHEDULE.map((day) => {
-                    // MOCK_SCHEDULE裡的日期是 '2026-02-20'，抓取月日 '02/20'
-                    const shortDate = day.date.slice(5).replace('-', '/');
-                    const isActive = selectedDate === day.date;
-                    return (
-                        <TouchableOpacity
-                            key={day.date}
-                            style={[styles.dateBox, isActive && styles.dateBoxActive]}
-                            onPress={() => setSelectedDate(day.date)}
-                        >
-                            <Text style={[styles.dateTextNum, isActive && styles.dateTextActive]}>{shortDate}</Text>
-                            <Text style={[styles.dateTextWeek, isActive && styles.dateTextActive]}>{day.weekday}</Text>
-                            {/* 底部小橫線指示器 */}
-                            {isActive && <View style={styles.dateIndicator} />}
-                        </TouchableOpacity>
-                    );
-                })}
-            </ScrollView>
-        </View>
-    );
+    const renderDateSelector = () => {
+        if (loading) return null;
+        return (
+            <View style={styles.dateSelectorWrapper}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateScroll}>
+                    {allSchedule.map((day) => {
+                        const shortDate = day.date.split('-').slice(1).join('/');
+                        const isActive = selectedDate === day.date;
+                        return (
+                            <TouchableOpacity
+                                key={day.date}
+                                style={[styles.dateBox, isActive && styles.dateBoxActive]}
+                                onPress={() => setSelectedDate(day.date)}
+                            >
+                                <Text style={[styles.dateTextNum, isActive && styles.dateTextActive]}>{shortDate}</Text>
+                                <Text style={[styles.dateTextWeek, isActive && styles.dateTextActive]}>開標</Text>
+                                {isActive && <View style={styles.dateIndicator} />}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
+            </View>
+        );
+    };
+
+    if (loading) {
+        return (
+            <SafeAreaView style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color={Colors.brandBlue} />
+                <Text style={{ marginTop: Spacing.md, color: Colors.brandBlue }}>同步雲端開標數據中...</Text>
+            </SafeAreaView>
+        );
+    }
 
     // 渲染個別案件卡片
     const renderCaseItem = ({ item }: { item: AuctionCase }) => {
