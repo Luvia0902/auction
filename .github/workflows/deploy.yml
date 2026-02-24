@@ -36,12 +36,12 @@ jobs:
       - name: Build Web App
         run: npx expo export -p web
         env:
-          EXPO_PUBLIC_FIREBASE_API_KEY: "dummy_key_for_build"
-          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: "dummy_domain_for_build"
-          EXPO_PUBLIC_FIREBASE_PROJECT_ID: "dummy_project_for_build"
-          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: "dummy_bucket_for_build"
-          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "dummy_sender_for_build"
-          EXPO_PUBLIC_FIREBASE_APP_ID: "dummy_app_id_for_build"
+          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
