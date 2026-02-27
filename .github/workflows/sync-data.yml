@@ -47,3 +47,6 @@ jobs:
 
       - name: Run Chang Hwa Bank Auctions Sync & Backup
         run: npx tsx scripts/syncChbAuctions.ts
+
+      - name: Run First Bank Auctions Sync & Backup
+        run: npx tsx scripts/syncFirstBankAuctions.ts
