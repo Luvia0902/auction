@@ -1,5 +1,5 @@
 // app/(tabs)/map.tsx — 🗺️ 地圖頁（Native: react-native-maps, Web: 精美佔位）
-import { Ionicons } from '@expo/vector-icons';
+import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import FilterSheet, { DEFAULT_FILTER, FilterState } from '../../src/components/FilterSheet';
 import WebMap from '../../src/components/WebMap';
 import { MOCK_PROPERTIES } from '../../src/data/mock';
-import { fetchRealEstateLocations, fetchRealProperties } from '../../src/lib/api/property';
+import { fetchAvailableBanks, fetchRealEstateLocations, fetchRealProperties } from '../../src/lib/api/property';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
 import type { Property } from '../../src/types/property';
 
@@ -44,11 +44,11 @@ function PropertyBottomCard({ p, onClose, onDetail }: { p: Property; onClose: ()
                                     🏢 實價行情
                                 </Text>
                             </View>
-                        ) : p.court === '彰化銀行' ? (
+                        ) : p.court?.includes('銀行') || p.id.startsWith('fb_') ? (
                             <>
                                 <View style={[styles.roundBadge, { borderColor: Colors.primary, backgroundColor: Colors.primary + '11' }]}>
                                     <Text style={[styles.roundBadgeText, { color: Colors.primary }]}>
-                                        🏦 彰銀代處分
+                                        🏦 {p.court?.includes('銀行') ? p.court : '銀行債權'}
                                     </Text>
                                 </View>
                                 <Text style={[styles.deliveryBadge, { color: p.delivery === 'delivery' ? Colors.delivery : Colors.noDelivery }]}>
@@ -143,14 +143,23 @@ function NativeMap({ selected, onSelect, data }: { selected: Property | null; on
             showsMyLocationButton={true}
             onPress={() => onSelect(null)}
         >
-            {data.map((p) => (
-                <Marker
-                    key={p.id}
-                    coordinate={{ latitude: p.lat ?? 25, longitude: p.lng ?? 121 }}
-                    onPress={() => onSelect(p)}
-                    pinColor={p.court === '實價登錄' ? 'purple' : RISK_COLOR[p.riskLevel]}
-                />
-            ))}
+            {data.map((p) => {
+                const isBank = p.court?.includes('銀行') || p.id.startsWith('fb_');
+                return (
+                    <Marker
+                        key={p.id}
+                        coordinate={{ latitude: p.lat ?? 25, longitude: p.lng ?? 121 }}
+                        onPress={() => onSelect(p)}
+                        pinColor={p.court === '實價登錄' ? 'purple' : isBank ? Colors.primary : RISK_COLOR[p.riskLevel]}
+                    >
+                        {isBank && (
+                            <View style={[styles.bankMarker, { backgroundColor: Colors.primary }]}>
+                                <FontAwesome5 name="university" size={12} color="#FFF" />
+                            </View>
+                        )}
+                    </Marker>
+                );
+            })}
         </MapView>
     );
 }
@@ -163,18 +172,21 @@ export default function MapScreen() {
 
     const [realData, setRealData] = useState<Property[]>([]);
     const [realEstateData, setRealEstateData] = useState<Property[]>([]);
+    const [availableBanks, setAvailableBanks] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         const load = async () => {
             setLoading(true);
             try {
-                const [auctionData, estateData] = await Promise.all([
+                const [auctionData, estateData, banks] = await Promise.all([
                     fetchRealProperties(),
-                    fetchRealEstateLocations(30)
+                    fetchRealEstateLocations(30),
+                    fetchAvailableBanks()
                 ]);
                 setRealData(auctionData);
                 setRealEstateData(estateData);
+                setAvailableBanks(banks);
             } catch (e) {
                 console.log('Load Real Data Failed:', e);
             } finally {
@@ -196,11 +208,13 @@ export default function MapScreen() {
             const matchRound = filter.auctionRounds.length === 0 || filter.auctionRounds.includes(p.auctionRound);
             const matchDel = filter.deliveryTypes.length === 0 || filter.deliveryTypes.includes(p.delivery);
             const matchType = filter.propertyTypes.length === 0 || filter.propertyTypes.includes(p.propertyType);
-            const matchCourt = filter.courts.length === 0 || filter.courts.includes(p.court);
+            const isBankProperty = p.court?.includes('銀行') || p.id.startsWith('fb_');
+            const matchCourt = filter.courts.length === 0 || filter.courts.includes(p.court) || (filter.courts.includes('銀行法拍') && isBankProperty);
+            const matchBank = filter.banks.length === 0 || filter.banks.some(b => p.court.includes(b.replace('銀行', '')) || b.includes(p.court.replace('銀行', '')));
             const matchRisk = filter.riskLevels.length === 0 || filter.riskLevels.includes(p.riskLevel);
             const matchPrMin = filter.priceMin == null || p.basePrice >= filter.priceMin;
             const matchPrMax = filter.priceMax == null || p.basePrice <= filter.priceMax;
-            return matchCity && matchRound && matchDel && matchType && matchCourt && matchRisk && matchPrMin && matchPrMax;
+            return matchCity && matchRound && matchDel && matchType && matchCourt && matchBank && matchRisk && matchPrMin && matchPrMax;
         });
     }, [filter, mergedData]);
 
@@ -241,6 +255,7 @@ export default function MapScreen() {
             <FilterSheet
                 visible={showFilter}
                 initialFilter={filter}
+                availableBanks={availableBanks}
                 onApply={(f) => setFilter(f)}
                 onClose={() => setShowFilter(false)}
             />
@@ -276,4 +291,10 @@ const styles = StyleSheet.create({
     detailBtnText: { color: '#fff', fontSize: Typography.sm, fontWeight: Typography.bold, textAlign: 'center', lineHeight: 20 },
     closeBtn: { position: 'absolute', top: Spacing.md, right: Spacing.lg },
     closeBtnText: { color: Colors.textMuted, fontSize: Typography.lg },
+    bankMarker: {
+        width: 24, height: 24, borderRadius: 12,
+        alignItems: 'center', justifyContent: 'center',
+        borderWidth: 2, borderColor: '#FFF',
+        shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 2, elevation: 4,
+    },
 });

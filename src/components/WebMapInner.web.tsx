@@ -13,10 +13,25 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-const getMarkerIcon = (riskLevel: string) => {
+const getMarkerIcon = (p: Property) => {
+    const isBank = p.court?.includes('銀行') || p.id.startsWith('fb_');
+
+    if (isBank) {
+        return L.divIcon({
+            html: `<div style="background-color: ${Colors.primary}; width: 24px; height: 24px; border-radius: 12px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                    <svg viewBox="0 0 512 512" width="14" height="14" fill="white">
+                        <path d="M243.4 2.6L7.4 102.9C2.9 104.8 0 109.3 0 114.3V144c0 8.8 7.2 16 16 16H496c8.8 0 16-7.2 16-16V114.3c0-5-2.9-9.5-7.4-11.4L268.6 2.6c-7.9-3.5-17.3-3.5-25.2 0zM496 192H16c-8.8 0-16 7.2-16 16v96c0 8.8 7.2 16 16 16H64v128c0 17.7 14.3 32 32 32H160c17.7 0 32-14.3 32-32V320H320v128c0 17.7 14.3 32 32 32H416c17.7 0 32-14.3 32-32V320h48c8.8 0 16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/>
+                    </svg>
+                   </div>`,
+            className: '',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+    }
+
     let colorUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png';
-    if (riskLevel === 'high') colorUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png';
-    else if (riskLevel === 'medium') colorUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png';
+    if (p.riskLevel === 'high') colorUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png';
+    else if (p.riskLevel === 'medium') colorUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png';
 
     return new L.Icon({
         iconUrl: colorUrl,
@@ -53,7 +68,7 @@ export default function WebMapInner({
                     <Marker
                         key={p.id}
                         position={[p.lat ?? 25.033, p.lng ?? 121.565]}
-                        icon={getMarkerIcon(p.riskLevel)}
+                        icon={getMarkerIcon(p)}
                         eventHandlers={{
                             click: () => onSelect(p === selected ? null : p),
                         }}

@@ -118,6 +118,7 @@ export default function ExploreScreen() {
 
   const [search, setSearch] = useState('');
   const [city, setCity] = useState('全部');
+  const [selectedBank, setSelectedBank] = useState('全部銀行');
   const [showFilter, setShowFilter] = useState(false);
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
   const [realProperties, setRealProperties] = useState<Property[]>([]);
@@ -145,7 +146,12 @@ export default function ExploreScreen() {
       // 縣市快篩
       let matchCityChip = city === '全部' || p.city === city;
       if (city === '銀行法拍') {
-        matchCityChip = p.court.includes('銀行');
+        const isBankProperty = p.court.includes('銀行') || p.id.startsWith('fb_');
+        if (selectedBank === '全部銀行') {
+          matchCityChip = isBankProperty;
+        } else {
+          matchCityChip = isBankProperty && p.court.includes(selectedBank.replace('銀行', ''));
+        }
       }
 
       // 搜尋關鍵字
@@ -158,7 +164,8 @@ export default function ExploreScreen() {
       const matchRound = filter.auctionRounds.length === 0 || filter.auctionRounds.includes(p.auctionRound);
       const matchDel = filter.deliveryTypes.length === 0 || filter.deliveryTypes.includes(p.delivery);
       const matchType = filter.propertyTypes.length === 0 || filter.propertyTypes.includes(p.propertyType);
-      const matchCourt = filter.courts.length === 0 || filter.courts.includes(p.court);
+      const isBankProperty = p.court.includes('銀行') || p.id.startsWith('fb_');
+      const matchCourt = filter.courts.length === 0 || filter.courts.includes(p.court) || (filter.courts.includes('銀行法拍') && isBankProperty);
       const matchBank = filter.banks.length === 0 || filter.banks.some(b => p.court.includes(b.replace('銀行', '')) || b.includes(p.court.replace('銀行', '')));
       const matchRisk = filter.riskLevels.length === 0 || filter.riskLevels.includes(p.riskLevel);
       const matchPrMin = filter.priceMin == null || p.basePrice >= filter.priceMin;
@@ -166,7 +173,7 @@ export default function ExploreScreen() {
       return matchCityChip && matchSearch && matchCity && matchRound &&
         matchDel && matchType && matchCourt && matchBank && matchRisk && matchPrMin && matchPrMax;
     });
-  }, [city, search, filter, mergedData]);
+  }, [city, selectedBank, search, filter, mergedData]);
 
   return (
     <View style={styles.screen}>
@@ -209,13 +216,36 @@ export default function ExploreScreen() {
           {CITY_FILTERS.map((c) => (
             <TouchableOpacity
               key={c}
-              onPress={() => setCity(c)}
+              onPress={() => {
+                setCity(c);
+                if (c !== '銀行法拍') setSelectedBank('全部銀行');
+              }}
               style={[styles.cityChip, city === c && styles.cityChipActive]}
             >
               <Text style={[styles.cityChipText, city === c && styles.cityChipTextActive]}>{c}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        {/* 銀行子選項 */}
+        {city === '銀行法拍' && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={[styles.chipRow, { marginTop: Spacing.sm }]}
+            contentContainerStyle={{ paddingHorizontal: Spacing.lg, gap: Spacing.sm }}
+          >
+            {['全部銀行', '第一銀行', '彰化銀行', ...availableBanks.filter(b => b !== '第一銀行' && b !== '彰化銀行')].map((b) => (
+              <TouchableOpacity
+                key={b}
+                onPress={() => setSelectedBank(b)}
+                style={[styles.bankChip, selectedBank === b && styles.bankChipActive]}
+              >
+                <Text style={[styles.bankChipText, selectedBank === b && styles.bankChipTextActive]}>{b}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </View>
 
       {/* 篩選中提示列 */}
@@ -345,6 +375,26 @@ const styles = StyleSheet.create({
   },
   cityChipTextActive: {
     color: Colors.brandBlue,
+    fontWeight: Typography.bold,
+  },
+  bankChip: {
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.surface,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  bankChipActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + '11',
+  },
+  bankChipText: {
+    color: Colors.textSecondary,
+    fontSize: Typography.xs,
+  },
+  bankChipTextActive: {
+    color: Colors.primary,
     fontWeight: Typography.bold,
   },
   // Filter Banner

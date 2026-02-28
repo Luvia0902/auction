@@ -53,7 +53,7 @@ const DISTRICTS_MAP: Record<string, string[]> = {
     '彰化縣': ['彰化市', '員林市', '和美鎮', '鹿港鎮', '溪湖鎮'],
 };
 const PROPERTY_TYPES = ['公寓', '電梯大樓', '透天厝', '土地'];
-const COURTS = ['台北地院', '新北地院', '桃園地院', '台中地院', '高雄地院'];
+const COURTS = ['台北地院', '新北地院', '桃園地院', '台中地院', '高雄地院', '銀行法拍'];
 const BANKS = [
     '臺灣銀行', '土地銀行', '合作金庫', '第一銀行', '華南銀行', '彰化銀行',
     '上海銀行', '台北富邦', '國泰世華', '高雄銀行', '兆豐銀行', '全國農業金庫',
@@ -194,16 +194,22 @@ export default function FilterSheet({ visible, initialFilter, availableBanks, on
                         label="拍賣機構"
                         options={COURTS}
                         selected={f.courts}
-                        onToggle={(v) => setF({ ...f, courts: toggle(f.courts, v) })}
+                        onToggle={(v) => {
+                            const next = toggle(f.courts, v);
+                            const nextBanks = next.includes('銀行法拍') ? f.banks : [];
+                            setF({ ...f, courts: next, banks: nextBanks });
+                        }}
                     />
 
-                    {/* 2.6 銀行法拍 */}
-                    <ChipGroup
-                        label="銀行法拍"
-                        options={Array.from(new Set([...BANKS, ...(availableBanks || [])]))}
-                        selected={f.banks}
-                        onToggle={(v) => setF({ ...f, banks: toggle(f.banks, v) })}
-                    />
+                    {/* 2.6 銀行子選項 (僅在選中銀行法拍時出現) */}
+                    {f.courts.includes('銀行法拍') && (
+                        <ChipGroup
+                            label="具體銀行選項"
+                            options={Array.from(new Set([...BANKS, ...(availableBanks || [])]))}
+                            selected={f.banks}
+                            onToggle={(v) => setF({ ...f, banks: toggle(f.banks, v) })}
+                        />
+                    )}
 
                     {/* 3. 物件種類 */}
                     <ChipGroup
