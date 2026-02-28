@@ -47,6 +47,7 @@ export interface Property {
     aiSummary?: string;
     // 追蹤
     isWatched: boolean;
+    updatedAt?: string;    // 最後更新日期
 }
 
 // 日程用型別

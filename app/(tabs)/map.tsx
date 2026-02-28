@@ -73,7 +73,7 @@ function PropertyBottomCard({ p, onClose, onDetail }: { p: Property; onClose: ()
                     <Text style={styles.bottomMeta}>
                         {isRealEstate
                             ? `${p.court} · ${p.area} 坪 · 📅 ${p.auctionDate.slice(5)}`
-                            : `${p.court} · ${p.area} 坪 · 📅 ${p.auctionDate.slice(5)}`
+                            : `${p.court} · ${p.area} 坪 · 📅 ${p.auctionDate.slice(5)}${p.updatedAt ? ` · 🔄 ${p.updatedAt.slice(5)}` : ''}`
                         }
                     </Text>
                 </View>

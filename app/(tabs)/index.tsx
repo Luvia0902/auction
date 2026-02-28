@@ -33,7 +33,12 @@ function PropertyCard({ item, onPress }: { item: Property; onPress: () => void }
         <Text style={[styles.cardTag, isBank && { color: '#F59E0B' }]}>{tagText}</Text>
         <Text style={styles.cardTitle} numberOfLines={2}>{item.address}</Text>
         <Text style={styles.cardPrice}>{formatPrice(item.basePrice)}</Text>
-        <Text style={styles.cardDate}>法拍日期：{item.auctionDate.replace(/-/g, '/')}</Text>
+        <View style={styles.cardFooter}>
+          <Text style={styles.cardDate}>法拍日期：{item.auctionDate.replace(/-/g, '/')}</Text>
+          {item.updatedAt && (
+            <Text style={styles.updateDate}>資料更新：{item.updatedAt.replace(/-/g, '/')}</Text>
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -505,6 +510,16 @@ const styles = StyleSheet.create({
   cardDate: {
     color: Colors.textDarkSecondary,
     fontSize: Typography.xs,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  updateDate: {
+    color: Colors.brandBlue + '99',
+    fontSize: 10,
+    fontWeight: Typography.medium,
   },
   // Empty
   empty: { alignItems: 'center', paddingTop: Spacing.xxxl },

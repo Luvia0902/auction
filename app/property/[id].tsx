@@ -218,6 +218,14 @@ export default function PropertyDetailScreen() {
                                     <MaterialCommunityIcons name="office-building-outline" size={16} color={Colors.textDarkMuted} />
                                     <Text style={styles.infoItemText}>樓層：{property.floor || '--/-- 層'}</Text>
                                 </View>
+                                {property.updatedAt && (
+                                    <View style={styles.infoItemRow}>
+                                        <Ionicons name="sync-outline" size={16} color={Colors.brandBlue} />
+                                        <Text style={[styles.infoItemText, { color: Colors.brandBlue, fontWeight: '600' }]}>
+                                            更新：{property.updatedAt.replace(/-/g, '/')}
+                                        </Text>
+                                    </View>
+                                )}
                             </View>
 
                             <View style={styles.infoCol}>

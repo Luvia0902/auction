@@ -42,7 +42,8 @@ export async function fetchRealProperties(): Promise<Property[]> {
                 riskLevel: (data.delivery?.includes('不點交')) ? 'high' : 'low',
                 riskItems: [],
                 imageUrls: data.imageUrl ? [data.imageUrl] : (data.imageUrls || []),
-                isWatched: false
+                isWatched: false,
+                updatedAt: data.updatedAt || data.date || new Date().toISOString().split('T')[0]
             };
 
             // 如果沒有座標，嘗試在前端噴一發 Geocoding (Demo 用，生產環境建議在後端做完)
@@ -105,7 +106,8 @@ export async function fetchRecentAuctions(limitCount: number = 20): Promise<Prop
                 riskLevel: (d.delivery?.includes('不點交')) ? 'high' : 'low',
                 riskItems: [],
                 imageUrls: d.imageUrl ? [d.imageUrl] : (d.imageUrls || []),
-                isWatched: false
+                isWatched: false,
+                updatedAt: d.updatedAt || d.date || new Date().toISOString().split('T')[0]
             } as Property;
         });
 
@@ -239,7 +241,8 @@ export async function fetchPropertyById(id: string): Promise<Property | null> {
                 riskLevel: (data.delivery?.includes('不點交')) ? 'high' : 'low',
                 riskItems: [],
                 imageUrls: data.imageUrl ? [data.imageUrl] : (data.imageUrls || []),
-                isWatched: false
+                isWatched: false,
+                updatedAt: data.updatedAt || data.date || new Date().toISOString().split('T')[0]
             } as Property;
         }
         return null;
