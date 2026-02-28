@@ -152,7 +152,8 @@ async function fetchChbAuctionData() {
                 delivery: item.status_delivery || '未註明',
                 auctionRound: 1, // 先預設 1
                 imageUrl: imageUrl,
-                url: 'https://www.bankchb.com/frontend/foreclosure.jsp' // 原始來源連結
+                url: 'https://www.bankchb.com/frontend/foreclosure.jsp', // 原始來源連結
+                updatedAt: new Date().toISOString().split('T')[0]
             };
         });
 

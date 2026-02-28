@@ -64,7 +64,8 @@ async function syncBotAuctions() {
                 court: "臺灣銀行",
                 caseNo: "BOT-114-XXXX",
                 imageUrl: "", // 臺銀通常無照片
-                type: "auction"
+                type: "auction",
+                updatedAt: new Date().toISOString().split('T')[0]
             };
         });
 

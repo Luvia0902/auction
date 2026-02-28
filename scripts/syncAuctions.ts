@@ -153,7 +153,8 @@ async function fetchAuctionData() {
                 court: item.crtnm,
                 caseNo: `${item.crmyy}年度${item.crmid}字第${item.crmno}號`,
                 delivery: item.checkyn === 'Y' ? '有點交' : '不點交',
-                auctionRound: parseInt(item.saleno) || 1
+                auctionRound: parseInt(item.saleno) || 1,
+                updatedAt: new Date().toISOString().split('T')[0]
             };
         });
 

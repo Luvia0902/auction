@@ -132,7 +132,8 @@ async function fetchFromGovernmentApi(): Promise<PricingRecord[]> {
                     unitPrice: parseFloat(unitPricePing.toFixed(1)),
                     area: parseFloat(areaPing.toFixed(1)),
                     floor: r['移轉層次'] ? r['移轉層次'].replace(/層/g, 'F') : '未知樓層',
-                    layout: `${r['建物現況格局-房'] || r['建物現況格局_房'] || 0}房${r['建物現況格局-廳'] || r['建物現況格局_廳'] || 0}廳${r['建物現況格局-衛'] || r['建物現況格局_衛'] || 0}衛`
+                    layout: `${r['建物現況格局-房'] || r['建物現況格局_房'] || 0}房${r['建物現況格局-廳'] || r['建物現況格局_廳'] || 0}廳${r['建物現況格局-衛'] || r['建物現況格局_衛'] || 0}衛`,
+                    updatedAt: new Date().toISOString().split('T')[0]
                 };
             });
 

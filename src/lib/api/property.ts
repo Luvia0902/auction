@@ -43,7 +43,7 @@ export async function fetchRealProperties(): Promise<Property[]> {
                 riskItems: [],
                 imageUrls: data.imageUrl ? [data.imageUrl] : (data.imageUrls || []),
                 isWatched: false,
-                updatedAt: data.updatedAt || data.date || new Date().toISOString().split('T')[0]
+                updatedAt: data.updatedAt || new Date().toISOString().split('T')[0]
             };
 
             // 如果沒有座標，嘗試在前端噴一發 Geocoding (Demo 用，生產環境建議在後端做完)
@@ -107,7 +107,7 @@ export async function fetchRecentAuctions(limitCount: number = 20): Promise<Prop
                 riskItems: [],
                 imageUrls: d.imageUrl ? [d.imageUrl] : (d.imageUrls || []),
                 isWatched: false,
-                updatedAt: d.updatedAt || d.date || new Date().toISOString().split('T')[0]
+                updatedAt: d.updatedAt || new Date().toISOString().split('T')[0]
             } as Property;
         });
 
@@ -242,7 +242,7 @@ export async function fetchPropertyById(id: string): Promise<Property | null> {
                 riskItems: [],
                 imageUrls: data.imageUrl ? [data.imageUrl] : (data.imageUrls || []),
                 isWatched: false,
-                updatedAt: data.updatedAt || data.date || new Date().toISOString().split('T')[0]
+                updatedAt: data.updatedAt || new Date().toISOString().split('T')[0]
             } as Property;
         }
         return null;

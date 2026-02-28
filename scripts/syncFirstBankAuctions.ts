@@ -173,6 +173,7 @@ async function fetchFirstBankAuctionData() {
                     url: finalUrl.startsWith('javascript') ? URL : finalUrl,
                     imageUrl: '',
                     imageUrls: [],
+                    updatedAt: new Date().toISOString().split('T')[0],
                     _raw: tdsText.join('|')
                 });
             }
