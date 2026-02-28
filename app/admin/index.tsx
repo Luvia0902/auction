@@ -12,6 +12,7 @@ const MENU = [
     { icon: '📊', label: '數據儀表板', sub: '查看頁面瀏覽、搜尋趨勢', route: '/admin/dashboard' },
     { icon: '🔔', label: '推播通知', sub: '向所有用戶發送公告', route: '/admin/notifications' },
     { icon: '⚙️', label: '系統設定', sub: 'Admin 帳號、維護模式', route: '/admin/settings' },
+    { icon: '🏆', label: '案例管理', sub: '新增/編輯成功案例', route: '/admin/stories' },
 ];
 
 export default function AdminHomeScreen() {

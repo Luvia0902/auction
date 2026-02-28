@@ -1,8 +1,31 @@
+import { doc, updateDoc } from 'firebase/firestore';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useAuth } from '../../src/context/AuthContext';
+import { db } from '../../src/lib/firebase';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
 
 export default function VipScreen() {
+    const { user } = useAuth();
+    const [upgrading, setUpgrading] = React.useState(false);
+
+    const handleUpgrade = async () => {
+        if (!user) return;
+        setUpgrading(true);
+        try {
+            await updateDoc(doc(db, 'users', user.uid), {
+                isVIP: true,
+                vipAt: new Date().toISOString()
+            });
+            alert('恭喜！您已成功升級為 VIP 會員。');
+        } catch (e) {
+            console.error(e);
+            alert('升級失敗，請稍後再試。');
+        } finally {
+            setUpgrading(false);
+        }
+    };
+
     return (
         <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
             <View style={styles.header}>
@@ -32,8 +55,8 @@ export default function VipScreen() {
                     ))}
                 </View>
 
-                <TouchableOpacity style={styles.upgradeBtn}>
-                    <Text style={styles.upgradeBtnText}>立即升級</Text>
+                <TouchableOpacity style={styles.upgradeBtn} onPress={handleUpgrade} disabled={upgrading}>
+                    <Text style={styles.upgradeBtnText}>{upgrading ? '處理中...' : '立即升級'}</Text>
                 </TouchableOpacity>
             </View>
         </ScrollView>

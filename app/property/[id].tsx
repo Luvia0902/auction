@@ -12,7 +12,6 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthContext';
 import { useWatchlist } from '../../src/context/WatchlistContext';
-import { MOCK_PROPERTIES } from '../../src/data/mock';
 import { AIBiddingReport, generatePropertyReport } from '../../src/lib/api/gemini';
 import { searchPCCProjects, type PCCProject } from '../../src/lib/api/pcc';
 import { fetchPropertyById } from '../../src/lib/api/property';
@@ -58,13 +57,10 @@ export default function PropertyDetailScreen() {
     useEffect(() => {
         const loadProp = async () => {
             setLoading(true);
-            // 嘗試從 MOCK 或 真實抓回來的 Auctions 中找
-            let found = MOCK_PROPERTIES.find((p) => p.id === id) || null;
-            if (!found && id) {
-                // 如果 Mock 找不到，直接去資料庫抓單一 ID
-                found = await fetchPropertyById(id);
+            if (id) {
+                const found = await fetchPropertyById(id);
+                setProperty(found);
             }
-            setProperty(found);
             setLoading(false);
         };
         loadProp();
@@ -309,8 +305,8 @@ export default function PropertyDetailScreen() {
 
             {/* 6. 底部雙 CTA 按鈕 */}
             <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
-                <TouchableOpacity style={styles.btnOutline}>
-                    <Text style={styles.btnOutlineText}>加入追蹤</Text>
+                <TouchableOpacity style={styles.btnOutline} onPress={() => toggleWatch(property.id)}>
+                    <Text style={styles.btnOutlineText}>{watched ? '取消追蹤' : '加入追蹤'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.btnSolid}>
                     <Text style={styles.btnSolidText}>聯絡代標/諮詢</Text>

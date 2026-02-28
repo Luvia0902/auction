@@ -112,6 +112,20 @@ export default function AdminSettingsScreen() {
                 </View>
             </View>
 
+            {/* 爬蟲管理 */}
+            <View style={styles.section}>
+                <Text style={styles.sectionLabel}>爬蟲與數據同步</Text>
+                <View style={styles.infoCard}>
+                    <TouchableOpacity style={styles.syncBtn} onPress={() => Alert.alert('開始同步', '正在背景執行 第一銀行 爬蟲同步...')} >
+                        <Text style={styles.syncBtnText}>🔄 立即同步：第一銀行</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.syncBtn} onPress={() => Alert.alert('開始同步', '正在背景執行 彰化銀行 爬蟲同步...')} >
+                        <Text style={styles.syncBtnText}>🔄 立即同步：彰化銀行</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.hint}>同步任務通常需要 10-30 秒不等，完成後將自動更新資料庫。</Text>
+                </View>
+            </View>
+
             {/* 登出 */}
             <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
                 <Text style={styles.logoutText}>🚪 登出後台</Text>
@@ -151,7 +165,9 @@ const styles = StyleSheet.create({
     logoutBtn: {
         backgroundColor: Colors.riskHigh + '22', borderRadius: Radius.pill,
         borderWidth: 1, borderColor: Colors.riskHigh + '66',
-        paddingVertical: Spacing.md, alignItems: 'center',
+        paddingVertical: Spacing.md, alignItems: 'center', marginTop: Spacing.lg,
     },
     logoutText: { color: Colors.riskHigh, fontSize: Typography.base, fontWeight: Typography.semibold },
+    syncBtn: { padding: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.surface },
+    syncBtnText: { color: Colors.primary, fontWeight: 'bold' },
 });

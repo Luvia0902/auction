@@ -1,72 +1,32 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
 
-interface Story {
-    id: string;
-    title: string;
-    location: string;
-    tags: string[];
-    roi: string;
-    duration: string;
-    summary: string;
-    views: string;
-    likes: string;
-    date: string;
-}
-
-const MOCK_STORIES: Story[] = [
-    {
-        id: '1',
-        title: '信義區老公寓，一拍流標三拍撿漏',
-        location: '台北市信義區',
-        tags: ['不點交', '排除租約', '精華地段'],
-        roi: '45%',
-        duration: '持有 8 個月',
-        summary: '原本帶有假租約的不點交物件，無人敢碰。透過精準的法律程序成功排除租約，並重新整理後以市價售出，成功獲利。',
-        views: '12.5k',
-        likes: '342',
-        date: '2 週前'
-    },
-    {
-        id: '2',
-        title: '點交不順利？教你如何和平勸退海蟑螂',
-        location: '新北市中和區',
-        tags: ['點交', '佔用處理', '談判技巧'],
-        roi: '28%',
-        duration: '處理 3 個月',
-        summary: '得標後發現前屋主惡意破壞並拒絕搬遷。分享如何運用法院公權力結合搬遷費談判，以最低成本和平取回房屋。',
-        views: '8.9k',
-        likes: '215',
-        date: '1 個月前'
-    },
-    {
-        id: '3',
-        title: '林口新市鎮，法拍底價低於實價三成',
-        location: '新北市林口區',
-        tags: ['法拍新古屋', '快速脫手'],
-        roi: '18%',
-        duration: '持有 4 個月',
-        summary: '遇到屋主資金斷鏈的新成屋法拍案。分析該區未來發展潛力，果斷進場，小幅裝修後迅速轉手，報酬率極佳。',
-        views: '15.2k',
-        likes: '488',
-        date: '2 個月前'
-    },
-    {
-        id: '4',
-        title: '持分房屋的投資煉金術',
-        location: '台中市西屯區',
-        tags: ['持分', '變價分割', '高進階'],
-        roi: '60%',
-        duration: '處理 1.5 年',
-        summary: '只拍賣 1/4 持分的物件。說明如何低價取得持分後，透過法院提起「變價分割」訴訟，最終整棟合法拍出並按比例分回高額價金。',
-        views: '22.1k',
-        likes: '890',
-        date: '3 個月前'
-    }
-];
+import { Story as ApiStory, fetchStories } from '../../src/lib/api/stories';
 
 export default function StoriesScreen() {
+    const [stories, setStories] = React.useState<ApiStory[]>([]);
+    const [loading, setLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        loadData();
+    }, []);
+
+    const loadData = async () => {
+        setLoading(true);
+        const data = await fetchStories();
+        setStories(data);
+        setLoading(false);
+    };
+
+    if (loading) {
+        return (
+            <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+        );
+    }
+
     return (
         <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
             <View style={styles.headerCard}>
@@ -75,17 +35,17 @@ export default function StoriesScreen() {
                 <Text style={styles.desc}>看看法拍達人們如何以低於市價 30% 標得精華地段，從中學習實戰經驗。</Text>
             </View>
 
-            {MOCK_STORIES.map((story) => (
+            {stories.map((story) => (
                 <TouchableOpacity key={story.id} style={styles.storyCard} activeOpacity={0.8}>
                     <View style={styles.cardHeader}>
                         <Text style={styles.locationTag}>📍 {story.location}</Text>
-                        <Text style={styles.dateText}>{story.date}</Text>
+                        <Text style={styles.dateText}>{story.createdAt ? new Date(story.createdAt).toLocaleDateString() : '近期'}</Text>
                     </View>
 
                     <Text style={styles.storyTitle}>{story.title}</Text>
 
                     <View style={styles.tagRow}>
-                        {story.tags.map(tag => (
+                        {story.tags.map((tag: string) => (
                             <View key={tag} style={styles.tag}>
                                 <Text style={styles.tagText}>{tag}</Text>
                             </View>

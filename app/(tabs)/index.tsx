@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FilterSheet, { DEFAULT_FILTER, FilterState } from '../../src/components/FilterSheet';
-import { MOCK_PROPERTIES } from '../../src/data/mock';
 import { fetchAvailableBanks, fetchRecentAuctions } from '../../src/lib/api/property';
 import { Colors, Radius, Spacing, Typography } from '../../src/theme';
 import type { Property } from '../../src/types/property';
@@ -139,7 +138,7 @@ export default function ExploreScreen() {
 
   const activeCount = countFilters(filter);
 
-  const mergedData = useMemo(() => [...MOCK_PROPERTIES, ...realProperties], [realProperties]);
+  const mergedData = useMemo(() => realProperties, [realProperties]);
 
   const filtered = useMemo(() => {
     return mergedData.filter((p) => {

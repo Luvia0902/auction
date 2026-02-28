@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import { collection, getDocs, limit, query } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, query } from 'firebase/firestore';
 import type { Property } from '../../types/property';
 import { db } from '../firebase';
 
@@ -73,40 +73,46 @@ export async function fetchRealProperties(): Promise<Property[]> {
 /**
  * 抓取最新進件的法拍案
  */
-export async function fetchRecentAuctions(limitCount: number = 10): Promise<Property[]> {
+export async function fetchRecentAuctions(limitCount: number = 20): Promise<Property[]> {
     try {
         const auctionRef = collection(db, 'auctions');
         const q = query(auctionRef, limit(limitCount));
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => {
-            const data = doc.data();
-            const minPrice = (data.totalPrice || 0) * 10000;
-            const areaPing = data.area || 0;
+        const data = snapshot.docs.map(doc => {
+            const d = doc.data();
+            const minPrice = (d.totalPrice || 0) * 10000;
+            const court = d.court || '法院';
+            const isBank = doc.id.startsWith('fb_') || court.includes('銀行');
+
             return {
                 id: doc.id,
-                address: data.address || '未知地址',
-                city: data.address?.substring(0, 3) || '台北市',
-                district: data.address?.substring(3, 6) || '',
-                lat: data.lat || 25.033,
-                lng: data.lng || 121.56,
-                court: data.court || '法院',
-                caseNumber: data.caseNo || '',
-                org: '法拍屋',
-                auctionRound: (data.auctionRound as any) || 1,
-                auctionDate: data.date || '',
+                address: d.address || '未知地址',
+                city: d.address?.substring(0, 3) || '台北市',
+                district: d.address?.substring(3, 6) || '',
+                lat: d.lat || 25.033,
+                lng: d.lng || 121.56,
+                court: isBank && !court.includes('銀行') ? `第一銀行` : court,
+                caseNumber: d.caseNo || '',
+                org: isBank ? '銀行債權' : '法拍屋',
+                auctionRound: (d.auctionRound as any) || 1,
+                auctionDate: d.date || '',
                 auctionTime: '10:00',
                 basePrice: minPrice,
                 propertyType: '住宅',
-                area: areaPing,
-                floor: data.floor || '',
-                delivery: (data.delivery?.includes('有點交') || data.delivery === '有點交') ? 'delivery' : 'no-delivery',
-                riskLevel: (data.delivery?.includes('不點交')) ? 'high' : 'low',
+                area: d.area || 0,
+                floor: d.floor || '',
+                delivery: (d.delivery?.includes('有點交') || d.delivery === '有點交') ? 'delivery' : 'no-delivery',
+                riskLevel: (d.delivery?.includes('不點交')) ? 'high' : 'low',
                 riskItems: [],
-                imageUrls: data.imageUrl ? [data.imageUrl] : (data.imageUrls || []),
+                imageUrls: d.imageUrl ? [d.imageUrl] : (d.imageUrls || []),
                 isWatched: false
-            };
+            } as Property;
         });
+
+        // 按日期降冪排列 (最新的在前)
+        return data.sort((a, b) => b.auctionDate.localeCompare(a.auctionDate));
     } catch (e) {
+        console.error('fetchRecentAuctions error:', e);
         return [];
     }
 }
@@ -208,37 +214,37 @@ export async function fetchRealEstateLocations(limitCount: number = 20): Promise
  */
 export async function fetchPropertyById(id: string): Promise<Property | null> {
     try {
-        const auctionRef = collection(db, 'auctions');
-        const snapshot = await getDocs(auctionRef); // 暫時用全拿過濾，未來建議用 doc(db, 'auctions', id)
-        const doc = snapshot.docs.find(d => d.id === id);
-
-        if (!doc) return null;
-
-        const data = doc.data();
-        return {
-            id: doc.id,
-            address: data.address || '未知地址',
-            city: data.address?.substring(0, 3) || '台北市',
-            district: data.address?.substring(3, 6) || '',
-            lat: data.lat || 25.033,
-            lng: data.lng || 121.56,
-            court: data.court || '法院',
-            caseNumber: data.caseNo || '',
-            org: '法拍屋',
-            auctionRound: (data.auctionRound as any) || 1,
-            auctionDate: data.date || '',
-            auctionTime: '10:00',
-            basePrice: (data.totalPrice || 0) * 10000,
-            propertyType: '住宅',
-            area: data.area || 0,
-            floor: data.floor || '',
-            delivery: (data.delivery?.includes('有點交') || data.delivery === '有點交') ? 'delivery' : 'no-delivery',
-            riskLevel: (data.delivery?.includes('不點交')) ? 'high' : 'low',
-            riskItems: [],
-            imageUrls: data.imageUrl ? [data.imageUrl] : (data.imageUrls || []),
-            isWatched: false
-        };
+        const docRef = doc(db, 'auctions', id);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+            const data = snap.data();
+            return {
+                id: snap.id,
+                address: data.address || '未知地址',
+                city: data.address?.substring(0, 3) || '台北市',
+                district: data.address?.substring(3, 6) || '',
+                lat: data.lat || 25.033,
+                lng: data.lng || 121.565,
+                court: data.court || '法院',
+                caseNumber: data.caseNo || '',
+                org: '法拍屋',
+                auctionRound: (data.auctionRound as any) || 1,
+                auctionDate: data.date || '',
+                auctionTime: '10:00',
+                basePrice: (data.totalPrice || 0) * 10000,
+                propertyType: '住宅',
+                area: data.area || 0,
+                floor: data.floor || '',
+                delivery: (data.delivery?.includes('有點交') || data.delivery === '有點交') ? 'delivery' : 'no-delivery',
+                riskLevel: (data.delivery?.includes('不點交')) ? 'high' : 'low',
+                riskItems: [],
+                imageUrls: data.imageUrl ? [data.imageUrl] : (data.imageUrls || []),
+                isWatched: false
+            } as Property;
+        }
+        return null;
     } catch (e) {
+        console.error('Error fetching property by ID:', e);
         return null;
     }
 }
